@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # The gateway server runs in stdio mode and launches backend processes
   # It should be configured directly in your MCP client (e.g., Claude Desktop)
