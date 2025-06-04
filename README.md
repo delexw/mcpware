@@ -24,6 +24,8 @@ mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple 
 - **Backend discovery**: Discover available backends and their tools
 - **Process management**: Automatically launches and manages backend MCP server processes
 
+**How it works**: mcpware runs inside a Docker container and launches other MCP servers (which can be Docker containers or npm packages) as child processes. This is why it needs access to the Docker socket - to create and manage Docker containers for backends like the GitHub MCP server.
+
 ## Quick Start
 
 ```bash
@@ -146,6 +148,11 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
    }
    ```
    
+   **Why mount the Docker socket?**
+   - mcpware needs to launch Docker containers for backend MCP servers (like `ghcr.io/github/github-mcp-server`)
+   - The Docker socket mount (`/var/run/docker.sock`) allows mcpware to communicate with Docker
+   - Without this mount, mcpware cannot start backend servers that run as Docker containers
+   
    This approach:
    - Uses absolute paths for mounting config.json
    - Doesn't require being in the mcpware directory
@@ -156,6 +163,14 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
 ### Platform-Specific Docker Socket Configuration
 
 The gateway needs access to the Docker socket to launch backend containers. The mount path differs by platform:
+
+**Why is Docker socket access required?**
+mcpware acts as a process manager that launches backend MCP servers. When a backend is configured to run as a Docker container (e.g., `ghcr.io/github/github-mcp-server`), mcpware needs to:
+- Create and start Docker containers
+- Manage their lifecycle (stop/restart)
+- Communicate with them via stdio
+
+Without Docker socket access, mcpware cannot launch Docker-based backends and will fail with permission errors.
 
 #### Quick Check
 Run this script to check your Docker configuration:
