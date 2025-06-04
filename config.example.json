@@ -28,40 +28,6 @@
       ],
       "description": "Time MCP Server",
       "timeout": 30
-    },
-    {
-      "name": "filesystem",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/tmp"
-      ],
-      "description": "Filesystem MCP Server",
-      "timeout": 30
-    },
-    {
-      "name": "memory",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
-      "description": "Memory MCP Server for temporary storage",
-      "timeout": 30
-    },
-    {
-      "name": "brave-search",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-brave-search"
-      ],
-      "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      },
-      "description": "Brave Search MCP Server",
-      "timeout": 30
     }
   ]
 }

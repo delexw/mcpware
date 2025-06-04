@@ -26,6 +26,8 @@ mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple 
 
 **How it works**: mcpware runs inside a Docker container and launches other MCP servers (which can be Docker containers or npm packages) as child processes. This is why it needs access to the Docker socket - to create and manage Docker containers for backends like the GitHub MCP server.
 
+**Important limitation**: Currently, mcpware only supports launching backend MCP servers that run inside Docker containers. Backend servers cannot run directly on the host machine. This is because mcpware itself runs in a Docker container and uses Docker-in-Docker to manage backends. Support for host-based backends may be added in future versions.
+
 ## Quick Start
 
 ```bash
@@ -189,21 +191,20 @@ Edit `config.json` to configure backend MCP servers:
       "timeout": 30
     },
     {
-      "name": "example",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
-      "description": "Example Memory MCP Server",
+      "name": "time",
+      "command": ["docker", "run", "-i", "--rm", "mcp/time"],
+      "description": "Time MCP Server",
       "timeout": 30
     }
   ]
 }
 ```
 
-See `config.example.json` for a more comprehensive example with multiple backend servers including:
+**Note**: When running mcpware in Docker (as shown in this guide), only Docker-based backend servers are supported. The backend commands must start with `["docker", "run", ...]`. NPM-based backends (like `npx` commands) are only supported when running mcpware directly on the host machine.
+
+See `config.example.json` for a more comprehensive example with Docker-based backend servers:
 - GitHub MCP Server
 - Time MCP Server
-- Filesystem MCP Server
-- Memory MCP Server
-- Brave Search MCP Server
 
 ### Backend Configuration Options
 
@@ -409,6 +410,18 @@ The gateway:
 2. Launches and manages backend MCP server processes
 3. Routes tool calls to appropriate backends
 4. Returns responses to the client
+
+### Docker-in-Docker Limitation
+
+When mcpware runs inside a Docker container:
+- It uses the host's Docker daemon (via socket mount) to launch backend containers
+- Backend processes run as sibling containers, not child processes
+- NPM/host-based backends cannot be launched because:
+  - The mcpware container doesn't have Node.js or other host tools
+  - File system paths would refer to the container's filesystem, not the host
+  - Network isolation prevents proper stdio communication with host processes
+
+This architectural constraint ensures security and isolation but limits backends to Docker-based implementations only.
 
 ## License
 
