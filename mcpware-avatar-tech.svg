@@ -1,0 +1,41 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="40" height="40" fill="none" stroke="#ffffff10" stroke-width="1" />
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="32" fill="#0d1117" />
+  <rect width="256" height="256" rx="32" fill="url(#grid)" />
+
+  <!-- Gateway Symbol -->
+  <g transform="translate(128, 128)">
+    <!-- Outer hexagon -->
+    <path d="M -40,-23 L -40,23 L 0,46 L 40,23 L 40,-23 L 0,-46 Z"
+      fill="none" stroke="#58a6ff" stroke-width="3" />
+
+    <!-- Inner connections -->
+    <circle cx="0" cy="0" r="8" fill="#58a6ff" />
+
+    <!-- Connection nodes -->
+    <circle cx="-30" cy="-17" r="5" fill="#79c0ff" />
+    <circle cx="30" cy="-17" r="5" fill="#79c0ff" />
+    <circle cx="-30" cy="17" r="5" fill="#79c0ff" />
+    <circle cx="30" cy="17" r="5" fill="#79c0ff" />
+    <circle cx="0" cy="34" r="5" fill="#79c0ff" />
+    <circle cx="0" cy="-34" r="5" fill="#79c0ff" />
+
+    <!-- Connection lines -->
+    <line x1="0" y1="-8" x2="0" y2="-29" stroke="#58a6ff" stroke-width="2" />
+    <line x1="0" y1="8" x2="0" y2="29" stroke="#58a6ff" stroke-width="2" />
+    <line x1="-7" y1="-4" x2="-25" y2="-14" stroke="#58a6ff" stroke-width="2" />
+    <line x1="7" y1="-4" x2="25" y2="-14" stroke="#58a6ff" stroke-width="2" />
+    <line x1="-7" y1="4" x2="-25" y2="14" stroke="#58a6ff" stroke-width="2" />
+    <line x1="7" y1="4" x2="25" y2="14" stroke="#58a6ff" stroke-width="2" />
+  </g>
+
+  <!-- Code brackets -->
+  <text x="50" y="135" font-family="monospace" font-size="32" fill="#30363d">&lt;/&gt;</text>
+  <text x="170" y="135" font-family="monospace" font-size="32" fill="#30363d">{}</text>
+</svg> 
