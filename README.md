@@ -71,7 +71,7 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
    ```json
    {
      "mcpServers": {
-       "gateway": {
+       "mcpware": {
          "command": "docker",
          "args": ["compose", "run", "--rm", "mcpware"],
          "cwd": "/path/to/mcpware"

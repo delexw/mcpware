@@ -7,7 +7,7 @@ services:
   # Example Claude Desktop configuration:
   # {
   #   "mcpServers": {
-  #     "gateway": {
+  #     "mcpware": {
   #       "command": "docker",
   #       "args": ["compose", "run", "--rm", "mcpware"],
   #       "env": {
