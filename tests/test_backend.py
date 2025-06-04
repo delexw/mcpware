@@ -228,7 +228,7 @@ class TestBackendForwarder:
         assert forwarder.backends == {}
     
     @pytest.mark.asyncio
-    @patch('src.backend.StdioBackend')
+    @patch('src.backend_forwarder.StdioBackend')
     async def test_initialize(self, mock_stdio_backend, forwarder):
         """Test initializing all backends"""
         # Mock StdioBackend instances

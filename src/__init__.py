@@ -1,18 +1,20 @@
 """
-Gateway MCP Server
-Routes tool calls to HTTP-based MCP backend servers in Docker
+Gateway MCP Server Package
 """
-
 from .config import ConfigurationManager, BackendMCPConfig
-from .backend import BackendForwarder
 from .protocol import MCPProtocolHandler, JSONRPCHandler
-
-__version__ = "1.0.0"
+from .utils import substitute_env_vars
+from .stdio_backend import StdioBackend
+from .backend_forwarder import BackendForwarder
+# Keep backend import for backward compatibility
+from .backend import *
 
 __all__ = [
-    "ConfigurationManager",
-    "BackendMCPConfig", 
-    "BackendForwarder",
-    "MCPProtocolHandler",
-    "JSONRPCHandler"
+    'ConfigurationManager',
+    'BackendMCPConfig',
+    'MCPProtocolHandler',
+    'JSONRPCHandler',
+    'substitute_env_vars',
+    'StdioBackend',
+    'BackendForwarder'
 ] 
