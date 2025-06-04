@@ -4,6 +4,15 @@
   <img src="mcpware-avatar-tech.svg" width="128" height="128" alt="Gateway MCP Server Logo">
 </div>
 
+<div align="center">
+
+[![Tests](https://github.com/delexw/mcpware/actions/workflows/tests.yml/badge.svg)](https://github.com/delexw/mcpware/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen.svg)](https://github.com/delexw/mcpware)
+[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+</div>
+
 A Model Context Protocol (MCP) gateway server that routes tool calls to multiple stdio-based MCP backend servers.
 
 ## Overview
