@@ -20,7 +20,10 @@ services:
     image: mcpware-gateway
     volumes:
       - ./config.json:/app/config.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Mount Docker socket for Docker-in-Docker
     environment:
       - GITHUB_PERSONAL_ACCESS_TOKEN
     stdin_open: true
-    tty: true 
+    tty: true
+    # For backends that need network access
+    network_mode: host 
