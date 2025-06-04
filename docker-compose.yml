@@ -17,10 +17,13 @@ services:
   
   mcpware:
     build: .
-    image: mcpware-gateway
+    image: mcpware
     volumes:
       - ./config.json:/app/config.json:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Mount Docker socket for Docker-in-Docker
+      # Mount Docker socket to allow Docker commands inside the container
+      # Linux/macOS/WSL2: /var/run/docker.sock:/var/run/docker.sock
+      # Windows (native): //./pipe/docker_engine://./pipe/docker_engine
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - GITHUB_PERSONAL_ACCESS_TOKEN
     stdin_open: true

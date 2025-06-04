@@ -189,6 +189,41 @@ docker compose logs -f mcpware
 docker compose down
 ```
 
+### Platform-Specific Docker Socket Configuration
+
+The gateway needs access to the Docker socket to launch backend containers. The mount path differs by platform:
+
+#### Quick Check
+Run this script to check your Docker configuration:
+```bash
+python scripts/check_docker_socket.py
+```
+
+#### Linux/macOS/WSL2
+No changes needed. The default configuration works:
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+```
+
+#### Windows (Native Containers)
+Create a `docker-compose.override.yml` file:
+```yaml
+services:
+  mcpware:
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - //./pipe/docker_engine://./pipe/docker_engine
+```
+
+#### Check Your Docker Type
+To verify which Docker backend you're using on Windows:
+```bash
+docker version --format '{{.Server.Os}}'
+```
+- `linux` = WSL2/Hyper-V backend (use default config)
+- `windows` = Windows containers (use override file)
+
 ### Environment Variables
 
 The gateway supports environment variable substitution in backend configurations. Set these in your `.env` file:
