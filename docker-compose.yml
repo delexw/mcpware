@@ -1,11 +1,28 @@
 version: '3.8'
 
 services:
+  # The gateway server runs in stdio mode and launches backend processes
+  # It should be configured directly in your MCP client (e.g., Claude Desktop)
+  # 
+  # Example Claude Desktop configuration:
+  # {
+  #   "mcpServers": {
+  #     "gateway": {
+  #       "command": "docker",
+  #       "args": ["run", "-i", "--rm", "-v", "./config.json:/app/config.json:ro", "mcpware-gateway"],
+  #       "env": {
+  #         "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+  #       }
+  #     }
+  #   }
+  # }
+  
   gateway:
     build: .
+    image: mcpware-gateway
     volumes:
       - ./config.json:/app/config.json:ro
     environment:
-      - DB_API_TOKEN=${DB_API_TOKEN}
+      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
     stdin_open: true
     tty: true 

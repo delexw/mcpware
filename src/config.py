@@ -4,7 +4,7 @@ Configuration module for Gateway MCP Server
 import json
 import logging
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -14,14 +14,17 @@ logger = logging.getLogger(__name__)
 class BackendMCPConfig:
     """Configuration for a backend MCP server"""
     name: str
-    url: str
+    command: Union[str, List[str]]
     description: str
     timeout: int = 30
-    headers: Optional[Dict[str, str]] = None
+    env: Optional[Dict[str, str]] = None
     
     def __post_init__(self):
-        if self.headers is None:
-            self.headers = {}
+        if self.env is None:
+            self.env = {}
+        # Ensure command is a list
+        if isinstance(self.command, str):
+            self.command = [self.command]
 
 
 class ConfigurationManager:
@@ -41,10 +44,10 @@ class ConfigurationManager:
             for backend_config in config.get('backends', []):
                 backend = BackendMCPConfig(
                     name=backend_config['name'],
-                    url=backend_config['url'],
+                    command=backend_config['command'],
                     description=backend_config['description'],
                     timeout=backend_config.get('timeout', 30),
-                    headers=backend_config.get('headers', {})
+                    env=backend_config.get('env', {})
                 )
                 backends[backend.name] = backend
                 

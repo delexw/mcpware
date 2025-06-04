@@ -1,104 +1,140 @@
-# Gateway MCP Server
+# mcpware - Gateway MCP Server
 
-A gateway MCP server that routes tool calls to multiple HTTP-based MCP backend servers running in Docker containers.
+A Model Context Protocol (MCP) gateway server that routes tool calls to multiple stdio-based MCP backend servers.
 
-## Features
+## Overview
 
-- 🔄 **Single Gateway Interface**: Connect to multiple Docker-based MCP servers through one gateway
-- 🎯 **Simple Routing**: Two tools - `use_tool` to route calls and `discover_backend_tools` to explore backends
-- 🐳 **Docker Integration**: Forward requests to HTTP-based MCP servers in Docker containers
-- 🔧 **MCP Client Compatible**: Works with Claude Desktop and other MCP clients
+mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple MCP servers through a single connection. It provides:
 
-## Quick Start
+- **Single entry point**: Connect to multiple MCP servers through one gateway
+- **Tool routing**: Routes tool calls to appropriate backend servers
+- **Backend discovery**: Discover available backends and their tools
+- **Process management**: Automatically launches and manages backend MCP server processes
 
-### 1. Install Dependencies
+## Installation
 
-```bash
-pip install -r requirements.txt
-```
+### Using with Claude Desktop
 
-### 2. Configure Backends
+1. Clone this repository
+2. Configure your backends in `config.json`
+3. Build the Docker image:
+   ```bash
+   docker build -t mcpware-gateway .
+   ```
+4. Add to Claude Desktop configuration:
+   ```json
+   {
+     "mcpServers": {
+       "gateway": {
+         "command": "docker",
+         "args": ["run", "-i", "--rm", "-v", "./config.json:/app/config.json:ro", "mcpware-gateway"],
+         "env": {
+           "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+         }
+       }
+     }
+   }
+   ```
 
-Edit `config.json` to point to your Docker-based MCP servers:
+## Configuration
+
+Edit `config.json` to configure backend MCP servers:
 
 ```json
 {
   "backends": [
     {
-      "name": "database",
-      "url": "http://localhost:8001",
-      "description": "Database MCP Server",
-      "timeout": 30,
-      "headers": {
-        "Authorization": "Bearer ${DB_API_TOKEN}"
-      }
+      "name": "github",
+      "command": ["docker", "run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "GitHub MCP Server",
+      "timeout": 30
     },
     {
-      "name": "custom",
-      "url": "http://localhost:8002", 
-      "description": "Custom MCP Server",
+      "name": "example",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-memory"],
+      "description": "Example Memory MCP Server",
       "timeout": 30
     }
   ]
 }
 ```
 
-### 3. Configure in Claude Desktop
+### Backend Configuration Options
 
-Add to your Claude Desktop configuration:
+- `name`: Unique identifier for the backend
+- `command`: Command and arguments to launch the backend server
+- `env`: Environment variables to pass to the backend (supports `${VAR}` substitution)
+- `description`: Human-readable description
+- `timeout`: Request timeout in seconds
 
-#### macOS
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+## Usage
 
+The gateway exposes two main tools:
+
+### use_tool
+
+Routes a tool call to a specific backend server.
+
+Parameters:
+- `backend_server`: Name of the backend server
+- `server_tool`: Name of the tool to call
+- `tool_arguments`: Arguments to pass to the tool
+
+Example:
 ```json
 {
-  "mcpServers": {
-    "gateway": {
-      "command": "python",
-      "args": ["/path/to/gateway_server.py"],
-      "env": {
-        "DB_API_TOKEN": "your-token"
-      }
-    }
+  "backend_server": "github",
+  "server_tool": "create_issue",
+  "tool_arguments": {
+    "owner": "myorg",
+    "repo": "myrepo",
+    "title": "New issue",
+    "body": "Issue description"
   }
 }
 ```
 
-#### Windows
-`%APPDATA%\Claude\claude_desktop_config.json`:
+### discover_backend_tools
 
-```json
-{
-  "mcpServers": {
-    "gateway": {
-      "command": "python",
-      "args": ["C:\\path\\to\\gateway_server.py"],
-      "env": {
-        "DB_API_TOKEN": "your-token"
-      }
-    }
-  }
-}
+Discovers available backends and their tools.
+
+Parameters:
+- `backend_name`: (Optional) Specific backend to query
+
+## Development
+
+### Running locally
+
+```bash
+python gateway_server.py --config config.json
 ```
 
-## How It Works
+### Docker
 
-The gateway exposes two tools:
+Build and run with Docker:
 
-1. **`use_tool`** - Routes tool calls to backend servers
-   - `backend_server`: Name of the backend (e.g., "database")
-   - `server_tool`: Tool name on that backend
-   - `tool_arguments`: Arguments for the tool
+```bash
+# Build image
+docker build -t mcpware-gateway .
 
-2. **`discover_backend_tools`** - Discovers available backends and their tools
-   - `backend_server` (optional): Specific backend to query
+# Run interactively
+docker run -i --rm \
+  -v ./config.json:/app/config.json:ro \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN \
+  mcpware-gateway
+```
 
-## Environment Variables
+## Architecture
 
-The gateway supports environment variable substitution in configuration:
-- Use `${VARIABLE_NAME}` in config.json
-- Set variables when configuring the MCP client
+The gateway:
+1. Receives MCP requests via stdio
+2. Launches and manages backend MCP server processes
+3. Routes tool calls to appropriate backends
+4. Returns responses to the client
 
 ## License
 
-MIT License
+MIT

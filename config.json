@@ -1,18 +1,30 @@
 {
   "backends": [
     {
-      "name": "database",
-      "url": "http://localhost:8001",
-      "description": "Database MCP Server",
-      "timeout": 30,
-      "headers": {
-        "Authorization": "Bearer ${DB_API_TOKEN}"
-      }
+      "name": "github",
+      "command": [
+        "docker",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "GitHub MCP Server",
+      "timeout": 30
     },
     {
-      "name": "custom",
-      "url": "http://localhost:8002",
-      "description": "Custom MCP Server",
+      "name": "example",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ],
+      "description": "Example Memory MCP Server",
       "timeout": 30
     }
   ]

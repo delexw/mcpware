@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Gateway MCP Server
-Routes tool calls to multiple HTTP-based MCP backend servers in Docker
+Routes tool calls to multiple stdio-based MCP backend servers
 """
 import argparse
 import logging
@@ -55,10 +55,10 @@ async def main():
     for backend in config_manager.backends.values():
         config = {
             "name": backend.name,
+            "command": backend.command,
             "description": backend.description,
             "timeout": backend.timeout,
-            "url": backend.url,
-            "headers": backend.headers
+            "env": backend.env
         }
         backend_configs.append(config)
     
