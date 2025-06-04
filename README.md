@@ -31,13 +31,14 @@ mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple 
 git clone https://github.com/delexw/mcpware.git
 cd mcpware
 
-# Set up environment
+# Set up environment (optional if using env in Claude config)
 echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
 
-# Build and configure
+# Build the Docker image
 docker compose build
 
-# Add to Claude Desktop and restart the app
+# Configure Claude Desktop (see Installation section)
+# Restart Claude Desktop after configuration
 ```
 
 Then configure Claude Desktop as shown in the [Installation](#installation) section.
@@ -83,7 +84,10 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
        "mcpware": {
          "command": "docker",
          "args": ["compose", "run", "--rm", "mcpware"],
-         "cwd": "/path/to/mcpware"
+         "cwd": "/path/to/mcpware",
+         "env": {
+           "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
+         }
        }
      }
    }
@@ -92,6 +96,27 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
    **Important**: 
    - Replace `/path/to/mcpware` with the absolute path to your cloned repository
    - On Windows, use forward slashes or escaped backslashes: `C:/Users/YourName/mcpware`
+   - Replace `your_github_token_here` with your actual GitHub Personal Access Token
+   - You can also use environment variable references: `"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"` if you have it set in your system
+
+   **Alternative: Using System Environment Variables**
+   
+   If you prefer to use system environment variables instead of hardcoding tokens:
+   ```json
+   {
+     "mcpServers": {
+       "mcpware": {
+         "command": "docker",
+         "args": ["compose", "run", "--rm", "mcpware"],
+         "cwd": "/path/to/mcpware"
+       }
+     }
+   }
+   ```
+   
+   Then ensure your environment variables are set:
+   - **macOS/Linux**: Add to `~/.zshrc` or `~/.bashrc`: `export GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here`
+   - **Windows**: Set via System Properties or PowerShell: `$env:GITHUB_PERSONAL_ACCESS_TOKEN="your_token_here"`
 
 6. Restart Claude Desktop to load the new configuration
 
