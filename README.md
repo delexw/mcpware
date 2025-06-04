@@ -1,4 +1,8 @@
-# mcpware - Gateway MCP Server
+# Gateway MCP Server
+
+<div align="center">
+  <img src="mcpware-avatar-tech.svg" width="128" height="128" alt="Gateway MCP Server Logo">
+</div>
 
 A Model Context Protocol (MCP) gateway server that routes tool calls to multiple stdio-based MCP backend servers.
 
@@ -154,7 +158,6 @@ The project includes comprehensive unit and integration tests.
    pytest tests/test_backend.py
    pytest tests/test_protocol.py
    ```
-
 5. Run tests in watch mode:
    ```bash
    pytest-watch
