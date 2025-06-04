@@ -127,6 +127,60 @@ docker run -i --rm \
   mcpware-gateway
 ```
 
+## Testing
+
+The project includes comprehensive unit and integration tests.
+
+### Running Tests
+
+1. Install test dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Run all tests:
+   ```bash
+   pytest
+   ```
+
+3. Run tests with coverage:
+   ```bash
+   pytest --cov=src --cov=gateway_server --cov-report=html
+   ```
+
+4. Run specific test modules:
+   ```bash
+   pytest tests/test_config.py
+   pytest tests/test_backend.py
+   pytest tests/test_protocol.py
+   ```
+
+5. Run tests in watch mode:
+   ```bash
+   pytest-watch
+   ```
+
+### Test Structure
+
+- `tests/test_config.py` - Tests for configuration management
+- `tests/test_backend.py` - Tests for backend process management and communication
+- `tests/test_protocol.py` - Tests for MCP protocol handling
+- `tests/test_gateway_server.py` - Integration tests for the complete system
+
+### Coverage
+
+The test suite aims for at least 80% code coverage. Coverage reports are generated in:
+- Terminal output (with missing lines)
+- `htmlcov/` directory (HTML report)
+- `coverage.xml` (XML report for CI)
+
+### Continuous Integration
+
+Tests run automatically on GitHub Actions for:
+- Multiple Python versions (3.8 - 3.12)
+- Multiple operating systems (Ubuntu, Windows, macOS)
+- Code linting with flake8 and black
+
 ## Architecture
 
 The gateway:

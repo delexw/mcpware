@@ -1,0 +1,22 @@
+{
+  "backends": [
+    {
+      "name": "test_backend_1",
+      "command": [
+        "echo",
+        "backend1"
+      ],
+      "description": "Test backend 1 for unit tests",
+      "timeout": 10,
+      "env": {
+        "TEST_VAR": "value1"
+      }
+    },
+    {
+      "name": "test_backend_2",
+      "command": "echo backend2",
+      "description": "Test backend 2 with string command",
+      "timeout": 5
+    }
+  ]
+}

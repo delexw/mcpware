@@ -1,1 +1,6 @@
 # Empty requirements.txt - all functionality is implemented using Python standard library 
+
+# Testing dependencies
+pytest
+pytest-asyncio
+pytest-cov 

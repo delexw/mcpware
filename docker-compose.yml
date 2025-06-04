@@ -23,6 +23,6 @@ services:
     volumes:
       - ./config.json:/app/config.json:ro
     environment:
-      - GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PERSONAL_ACCESS_TOKEN}
+      - GITHUB_PERSONAL_ACCESS_TOKEN
     stdin_open: true
     tty: true 
