@@ -33,13 +33,11 @@ mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple 
 git clone https://github.com/delexw/mcpware.git
 cd mcpware
 
-# Set up environment (optional if using env in Claude config)
-echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
-
 # Build the Docker image
-docker compose build
+docker build -t mcpware .
 
 # Configure Claude Desktop (see Installation section)
+# Add the configuration to claude_desktop_config.json
 # Restart Claude Desktop after configuration
 ```
 
@@ -48,7 +46,7 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
 ## Installation
 
 ### Prerequisites
-- Docker and Docker Compose
+- Docker
 - Claude Desktop app
 
 ### Setup with Claude Desktop
@@ -67,62 +65,14 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
    echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
    ```
 
-4. Build the Docker image:
-   ```bash
-   docker compose build
-   ```
-
-5. Add to Claude Desktop configuration:
+4. Add to Claude Desktop configuration:
    
    **Config file locations:**
    - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
    - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
    - Linux: `~/.config/Claude/claude_desktop_config.json`
 
-   **Configuration:**
-   ```json
-   {
-     "mcpServers": {
-       "mcpware": {
-         "command": "docker",
-         "args": ["compose", "run", "--rm", "mcpware"],
-         "cwd": "/path/to/mcpware",
-         "env": {
-           "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
-         }
-       }
-     }
-   }
-   ```
-
-   **Important**: 
-   - Replace `/path/to/mcpware` with the absolute path to your cloned repository
-   - On Windows, use forward slashes or escaped backslashes: `C:/Users/YourName/mcpware`
-   - Replace `your_github_token_here` with your actual GitHub Personal Access Token
-   - You can also use environment variable references: `"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"` if you have it set in your system
-
-   **Alternative: Using System Environment Variables**
-   
-   If you prefer to use system environment variables instead of hardcoding tokens:
-   ```json
-   {
-     "mcpServers": {
-       "mcpware": {
-         "command": "docker",
-         "args": ["compose", "run", "--rm", "mcpware"],
-         "cwd": "/path/to/mcpware"
-       }
-     }
-   }
-   ```
-   
-   Then ensure your environment variables are set:
-   - **macOS/Linux**: Add to `~/.zshrc` or `~/.bashrc`: `export GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here`
-   - **Windows**: Set via System Properties or PowerShell: `$env:GITHUB_PERSONAL_ACCESS_TOKEN="your_token_here"`
-
-   **Alternative: Direct Docker Run (Without Docker Compose)**
-   
-   You can also configure mcpware using direct Docker commands:
+   **Configuration (Direct Docker Run):**
    ```json
    {
      "mcpServers": {
@@ -147,16 +97,16 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
      }
    }
    ```
+
+   **Important**: 
+   - Replace `/path/to/mcpware` with the absolute path to your cloned repository
+   - Replace `your_github_token_here` with your actual GitHub Personal Access Token
+   - The Docker socket mount (`/var/run/docker.sock`) is required for mcpware to launch Docker-based backends
    
    **Why mount the Docker socket?**
    - mcpware needs to launch Docker containers for backend MCP servers (like `ghcr.io/github/github-mcp-server`)
-   - The Docker socket mount (`/var/run/docker.sock`) allows mcpware to communicate with Docker
+   - The Docker socket mount allows mcpware to communicate with Docker
    - Without this mount, mcpware cannot start backend servers that run as Docker containers
-   
-   This approach:
-   - Uses absolute paths for mounting config.json
-   - Doesn't require being in the mcpware directory
-   - Passes environment variables directly to Docker
 
 6. Restart Claude Desktop to load the new configuration
 
@@ -186,14 +136,33 @@ volumes:
 ```
 
 #### Windows (Native Containers)
-Create a `docker-compose.override.yml` file:
-```yaml
-services:
-  mcpware:
-    volumes:
-      - ./config.json:/app/config.json:ro
-      - //./pipe/docker_engine://./pipe/docker_engine
+Update the Docker socket path in your Claude Desktop configuration:
+```json
+{
+  "mcpServers": {
+    "mcpware": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v",
+        "/path/to/mcpware/config.json:/app/config.json:ro",
+        "-v",
+        "//./pipe/docker_engine://./pipe/docker_engine",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "mcpware"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
+      }
+    }
+  }
+}
 ```
+
+Note the different Docker socket path: `//./pipe/docker_engine` instead of `/var/run/docker.sock`
 
 #### Check Your Docker Type
 To verify which Docker backend you're using on Windows:
@@ -292,8 +261,13 @@ Example mixed configuration:
   "mcpServers": {
     "mcpware": {
       "command": "docker",
-      "args": ["compose", "run", "--rm", "mcpware"],
-      "cwd": "/path/to/mcpware",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "/path/to/mcpware/config.json:/app/config.json:ro",
+        "-v", "/var/run/docker.sock:/var/run/docker.sock",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "mcpware"
+      ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token"
       }
@@ -321,20 +295,25 @@ python gateway_server.py --config config.json
 
 ### Docker
 
-Build and run with Docker Compose:
+Build and run with Docker:
 
 ```bash
 # Build the image
-docker compose build
+docker build -t mcpware .
 
 # Run interactively (for testing)
-docker compose run --rm mcpware
+docker run -it --rm \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN \
+  mcpware
 
-# View logs
-docker compose logs -f mcpware
-
-# Clean up
-docker compose down
+# Run with specific config file
+docker run -it --rm \
+  -v /path/to/your/config.json:/app/config.json:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN \
+  mcpware
 ```
 
 ### Environment Variables
@@ -395,7 +374,11 @@ python scripts/test_mcpware.py
 python scripts/verify_backend_tools.py
 
 # Test with Docker
-docker compose run --rm -T mcpware < scripts/test_commands.txt
+docker run -it --rm \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e GITHUB_PERSONAL_ACCESS_TOKEN \
+  mcpware < scripts/test_commands.txt
 ```
 
 ### Test Structure
