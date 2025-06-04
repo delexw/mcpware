@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  gateway:
+    build: .
+    volumes:
+      - ./config.json:/app/config.json:ro
+    environment:
+      - DB_API_TOKEN=${DB_API_TOKEN}
+    stdin_open: true
+    tty: true 

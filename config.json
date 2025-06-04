@@ -1,0 +1,19 @@
+{
+  "backends": [
+    {
+      "name": "database",
+      "url": "http://localhost:8001",
+      "description": "Database MCP Server",
+      "timeout": 30,
+      "headers": {
+        "Authorization": "Bearer ${DB_API_TOKEN}"
+      }
+    },
+    {
+      "name": "custom",
+      "url": "http://localhost:8002",
+      "description": "Custom MCP Server",
+      "timeout": 30
+    }
+  ]
+}
