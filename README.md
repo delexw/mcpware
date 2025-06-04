@@ -118,7 +118,75 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
    - **macOS/Linux**: Add to `~/.zshrc` or `~/.bashrc`: `export GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here`
    - **Windows**: Set via System Properties or PowerShell: `$env:GITHUB_PERSONAL_ACCESS_TOKEN="your_token_here"`
 
+   **Alternative: Direct Docker Run (Without Docker Compose)**
+   
+   You can also configure mcpware using direct Docker commands:
+   ```json
+   {
+     "mcpServers": {
+       "mcpware": {
+         "command": "docker",
+         "args": [
+           "run",
+           "-i",
+           "--rm",
+           "-v",
+           "/path/to/mcpware/config.json:/app/config.json:ro",
+           "-v",
+           "/var/run/docker.sock:/var/run/docker.sock",
+           "-e",
+           "GITHUB_PERSONAL_ACCESS_TOKEN",
+           "mcpware"
+         ],
+         "env": {
+           "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
+         }
+       }
+     }
+   }
+   ```
+   
+   This approach:
+   - Uses absolute paths for mounting config.json
+   - Doesn't require being in the mcpware directory
+   - Passes environment variables directly to Docker
+
 6. Restart Claude Desktop to load the new configuration
+
+### Platform-Specific Docker Socket Configuration
+
+The gateway needs access to the Docker socket to launch backend containers. The mount path differs by platform:
+
+#### Quick Check
+Run this script to check your Docker configuration:
+```bash
+python scripts/check_docker_socket.py
+```
+
+#### Linux/macOS/WSL2
+No changes needed. The default configuration works:
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+```
+
+#### Windows (Native Containers)
+Create a `docker-compose.override.yml` file:
+```yaml
+services:
+  mcpware:
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - //./pipe/docker_engine://./pipe/docker_engine
+```
+
+#### Check Your Docker Type
+To verify which Docker backend you're using on Windows:
+```bash
+docker version --format '{{.Server.Os}}'
+```
+- `linux` = WSL2/Hyper-V backend (use default config)
+- `windows` = Windows containers (use override file)
 
 ## Configuration
 
@@ -145,6 +213,13 @@ Edit `config.json` to configure backend MCP servers:
   ]
 }
 ```
+
+See `config.example.json` for a more comprehensive example with multiple backend servers including:
+- GitHub MCP Server
+- Time MCP Server
+- Filesystem MCP Server
+- Memory MCP Server
+- Brave Search MCP Server
 
 ### Backend Configuration Options
 
@@ -188,6 +263,39 @@ Discovers available backends and their tools.
 Parameters:
 - `backend_name`: (Optional) Specific backend to query
 
+## Using mcpware Alongside Other MCP Servers
+
+mcpware is designed to work alongside other MCP servers in your Claude Desktop configuration. You can:
+
+1. **Use mcpware as a gateway** for multiple backend servers
+2. **Keep some MCP servers separate** for direct access
+3. **Mix and match** based on your needs
+
+Example mixed configuration:
+```json
+{
+  "mcpServers": {
+    "mcpware": {
+      "command": "docker",
+      "args": ["compose", "run", "--rm", "mcpware"],
+      "cwd": "/path/to/mcpware",
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token"
+      }
+    },
+    "redis-direct": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-e", "REDIS_HOST=localhost", "mcp/redis"]
+    }
+  }
+}
+```
+
+This allows you to:
+- Access multiple servers through mcpware when you need routing
+- Connect directly to specific servers when you need dedicated access
+- Organize your MCP servers based on your workflow
+
 ## Development
 
 ### Running locally
@@ -213,41 +321,6 @@ docker compose logs -f mcpware
 # Clean up
 docker compose down
 ```
-
-### Platform-Specific Docker Socket Configuration
-
-The gateway needs access to the Docker socket to launch backend containers. The mount path differs by platform:
-
-#### Quick Check
-Run this script to check your Docker configuration:
-```bash
-python scripts/check_docker_socket.py
-```
-
-#### Linux/macOS/WSL2
-No changes needed. The default configuration works:
-```yaml
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock
-```
-
-#### Windows (Native Containers)
-Create a `docker-compose.override.yml` file:
-```yaml
-services:
-  mcpware:
-    volumes:
-      - ./config.json:/app/config.json:ro
-      - //./pipe/docker_engine://./pipe/docker_engine
-```
-
-#### Check Your Docker Type
-To verify which Docker backend you're using on Windows:
-```bash
-docker version --format '{{.Server.Os}}'
-```
-- `linux` = WSL2/Hyper-V backend (use default config)
-- `windows` = Windows containers (use override file)
 
 ### Environment Variables
 
