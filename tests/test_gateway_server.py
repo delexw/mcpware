@@ -159,23 +159,28 @@ class TestEndToEnd:
         return process
     
     @pytest.mark.asyncio
-    @patch('src.backend.StdioBackend')
-    async def test_tool_call_flow(self, mock_stdio_backend_class):
+    async def test_tool_call_flow(self):
         """Test complete tool call flow through the system"""
         from src.config import ConfigurationManager, BackendMCPConfig
-        from src.backend import BackendForwarder
-        from src.protocol import MCPProtocolHandler, JSONRPCHandler
+        from src.backend_forwarder import BackendForwarder
+        from src.mcp_protocol_handler import MCPProtocolHandler
+        from src.jsonrpc_handler import JSONRPCHandler
         
-        # Create a mock backend instance
-        mock_backend = AsyncMock()
-        mock_backend.name = "test_backend"
-        mock_backend.config = {"command": ["echo", "test"], "timeout": 5}
+        # Create real components
+        config_manager = ConfigurationManager()
+        config_manager.backends = {
+            "test_backend": BackendMCPConfig(
+                name="test_backend",
+                command=["echo", "test"],
+                description="Test backend"
+            )
+        }
         
-        # Mock the start method
-        mock_backend.start = AsyncMock()
+        # Create a mock backend forwarder
+        backend_forwarder = AsyncMock(spec=BackendForwarder)
         
-        # Mock send_request to return appropriate responses
-        async def mock_send_request(request):
+        # Mock the forward_request method to return appropriate responses
+        async def mock_forward_request(backend_name, request):
             if request.get("method") == "initialize":
                 return {
                     "jsonrpc": "2.0",
@@ -195,30 +200,9 @@ class TestEndToEnd:
                 }
             return {"jsonrpc": "2.0", "id": request.get("id"), "error": {"message": "Unknown method"}}
         
-        mock_backend.send_request = AsyncMock(side_effect=mock_send_request)
-        mock_backend.stop = AsyncMock()
-        
-        # Make the class return our mock instance
-        mock_stdio_backend_class.return_value = mock_backend
-        
-        # Create real components
-        config_manager = ConfigurationManager()
-        config_manager.backends = {
-            "test_backend": BackendMCPConfig(
-                name="test_backend",
-                command=["echo", "test"],
-                description="Test backend"
-            )
-        }
-        
-        backend_forwarder = BackendForwarder([{
-            "name": "test_backend",
-            "command": ["echo", "test"],
-            "description": "Test backend",
-            "timeout": 5
-        }])
-        
-        await backend_forwarder.initialize()
+        backend_forwarder.forward_request = AsyncMock(side_effect=mock_forward_request)
+        backend_forwarder.initialize = AsyncMock()
+        backend_forwarder.close = AsyncMock()
         
         protocol_handler = MCPProtocolHandler(config_manager, backend_forwarder)
         jsonrpc_handler = JSONRPCHandler(protocol_handler)

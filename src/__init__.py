@@ -2,19 +2,21 @@
 Gateway MCP Server Package
 """
 from .config import ConfigurationManager, BackendMCPConfig
-from .protocol import MCPProtocolHandler, JSONRPCHandler
 from .utils import substitute_env_vars
 from .stdio_backend import StdioBackend
 from .backend_forwarder import BackendForwarder
-# Keep backend import for backward compatibility
+from .mcp_protocol_handler import MCPProtocolHandler
+from .jsonrpc_handler import JSONRPCHandler
+# Keep backend and protocol imports for backward compatibility
 from .backend import *
+from .protocol import *
 
 __all__ = [
     'ConfigurationManager',
     'BackendMCPConfig',
-    'MCPProtocolHandler',
-    'JSONRPCHandler',
     'substitute_env_vars',
     'StdioBackend',
-    'BackendForwarder'
+    'BackendForwarder',
+    'MCPProtocolHandler',
+    'JSONRPCHandler'
 ] 
