@@ -15,30 +15,76 @@ mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple 
 - **Backend discovery**: Discover available backends and their tools
 - **Process management**: Automatically launches and manages backend MCP server processes
 
+## Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/delexw/mcpware.git
+cd mcpware
+
+# Set up environment
+echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
+
+# Build and configure
+docker-compose build
+
+# Add to Claude Desktop and restart the app
+```
+
+Then configure Claude Desktop as shown in the [Installation](#installation) section.
+
 ## Installation
 
-### Using with Claude Desktop
+### Prerequisites
+- Docker and Docker Compose
+- Claude Desktop app
 
-1. Clone this repository
-2. Configure your backends in `config.json`
-3. Build the Docker image:
+### Setup with Claude Desktop
+
+1. Clone this repository:
    ```bash
-   docker build -t mcpware-gateway .
+   git clone https://github.com/delexw/mcpware.git
+   cd mcpware
    ```
-4. Add to Claude Desktop configuration:
+
+2. Configure your backends in `config.json` (see Configuration section below)
+
+3. Set up your environment variables:
+   ```bash
+   # Create a .env file with your tokens
+   echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
+   ```
+
+4. Build the Docker image:
+   ```bash
+   docker-compose build
+   ```
+
+5. Add to Claude Desktop configuration:
+   
+   **Config file locations:**
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+   - Linux: `~/.config/Claude/claude_desktop_config.json`
+
+   **Configuration:**
    ```json
    {
      "mcpServers": {
        "gateway": {
-         "command": "docker",
-         "args": ["run", "-i", "--rm", "-v", "./config.json:/app/config.json:ro", "mcpware-gateway"],
-         "env": {
-           "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
-         }
+         "command": "docker-compose",
+         "args": ["run", "--rm", "gateway"],
+         "cwd": "/path/to/mcpware"
        }
      }
    }
    ```
+
+   **Important**: 
+   - Replace `/path/to/mcpware` with the absolute path to your cloned repository
+   - On Windows, use forward slashes or escaped backslashes: `C:/Users/YourName/mcpware`
+
+6. Restart Claude Desktop to load the new configuration
 
 ## Configuration
 
@@ -118,18 +164,34 @@ python gateway_server.py --config config.json
 
 ### Docker
 
-Build and run with Docker:
+Build and run with Docker Compose:
 
 ```bash
-# Build image
-docker build -t mcpware-gateway .
+# Build the image
+docker-compose build
 
-# Run interactively
-docker run -i --rm \
-  -v ./config.json:/app/config.json:ro \
-  -e GITHUB_PERSONAL_ACCESS_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN \
-  mcpware-gateway
+# Run interactively (for testing)
+docker-compose run --rm gateway
+
+# View logs
+docker-compose logs -f
+
+# Clean up
+docker-compose down
 ```
+
+### Environment Variables
+
+The gateway supports environment variable substitution in backend configurations. Set these in your `.env` file:
+
+```bash
+# Example .env file
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxxxxxxxxxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxx
+# Add other tokens as needed
+```
+
+Environment variables referenced in `config.json` using `${VAR_NAME}` syntax will be automatically substituted.
 
 ## Testing
 
