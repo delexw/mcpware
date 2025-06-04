@@ -9,7 +9,7 @@ services:
   #   "mcpServers": {
   #     "gateway": {
   #       "command": "docker",
-  #       "args": ["run", "-i", "--rm", "-v", "./config.json:/app/config.json:ro", "mcpware-gateway"],
+  #       "args": ["compose", "run", "--rm", "mcpware"],
   #       "env": {
   #         "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
   #       }
@@ -17,7 +17,7 @@ services:
   #   }
   # }
   
-  gateway:
+  mcpware:
     build: .
     image: mcpware-gateway
     volumes:

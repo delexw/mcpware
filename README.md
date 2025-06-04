@@ -73,7 +73,7 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
      "mcpServers": {
        "gateway": {
          "command": "docker",
-         "args": ["compose", "run", "--rm", "gateway"],
+         "args": ["compose", "run", "--rm", "mcpware"],
          "cwd": "/path/to/mcpware"
        }
      }
@@ -171,10 +171,10 @@ Build and run with Docker Compose:
 docker compose build
 
 # Run interactively (for testing)
-docker compose run --rm gateway
+docker compose run --rm mcpware
 
 # View logs
-docker compose logs -f
+docker compose logs -f mcpware
 
 # Clean up
 docker compose down
