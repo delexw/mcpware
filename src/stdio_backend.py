@@ -65,12 +65,12 @@ class StdioBackend:
         
         logger.info(f"Starting backend {self.name}")
         logger.info(f"  Command: {' '.join(command)}")
-        logger.debug(f"  Working directory: {os.getcwd()}")
+        logger.info(f"  Working directory: {os.getcwd()}")
         
         # Log environment variables that were set/modified
         env_diff = {k: v for k, v in env.items() if k not in os.environ or os.environ[k] != v}
         if env_diff:
-            logger.debug(f"  Modified environment variables: {list(env_diff.keys())}")
+            logger.info(f"  Modified environment variables: {list(env_diff.keys())}")
         
         # Start the process
         self.process = await asyncio.create_subprocess_exec(
@@ -102,7 +102,7 @@ class StdioBackend:
                     request_id = response.get("id")
                     
                     # Log all responses for debugging
-                    logger.debug(f"Backend {self.name} sent response: {response}")
+                    logger.info(f"Backend {self.name} sent response: {response}")
                     
                     if request_id in self.pending_requests:
                         future = self.pending_requests.pop(request_id)
@@ -154,7 +154,7 @@ class StdioBackend:
         request_id = request["id"]
         method = request.get("method", "unknown")
         
-        logger.debug(f"Backend {self.name} sending request {request_id}: {method}")
+        logger.info(f"Backend {self.name} sending request {request_id}: {method}")
         
         # Create future for the response
         future = asyncio.Future()
@@ -168,9 +168,9 @@ class StdioBackend:
             
             # Wait for response with timeout
             timeout = self.config.get("timeout", 30)
-            logger.debug(f"Backend {self.name} waiting for response to {request_id} (timeout: {timeout}s)")
+            logger.info(f"Backend {self.name} waiting for response to {request_id} (timeout: {timeout}s)")
             response = await asyncio.wait_for(future, timeout=timeout)
-            logger.debug(f"Backend {self.name} received response for {request_id}")
+            logger.info(f"Backend {self.name} received response for {request_id}")
             return response
             
         except asyncio.TimeoutError:
