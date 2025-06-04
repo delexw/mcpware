@@ -220,10 +220,26 @@ The project includes comprehensive unit and integration tests.
    pytest tests/test_backend.py
    pytest tests/test_protocol.py
    ```
+
 5. Run tests in watch mode:
    ```bash
    pytest-watch
    ```
+
+### Verification Scripts
+
+The project includes scripts to verify the gateway functionality:
+
+```bash
+# Test basic MCP functionality
+python scripts/test_mcpware.py
+
+# Verify backend tools discovery
+python scripts/verify_backend_tools.py
+
+# Test with Docker
+docker compose run --rm -T mcpware < scripts/test_commands.txt
+```
 
 ### Test Structure
 

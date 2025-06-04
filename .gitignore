@@ -85,7 +85,6 @@ logs/
 *.log
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Temporary files
@@ -109,4 +108,11 @@ htmlcov/
 .hypothesis/
 .tox/
 nosetests.xml
-pytest_cache/ 
+pytest_cache/
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+# Environments 

@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+scripts/
+tests/
+*.log
+.env
+.tool-versions
+
+# Documentation
+README.md
+LICENSE
+Makefile
+
+# GitHub
+.github/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/ 
