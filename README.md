@@ -24,9 +24,20 @@ mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple 
 - **Backend discovery**: Discover available backends and their tools
 - **Process management**: Automatically launches and manages backend MCP server processes
 
-**How it works**: mcpware runs inside a Docker container and launches other MCP servers (which can be Docker containers or npm packages) as child processes. This is why it needs access to the Docker socket - to create and manage Docker containers for backends like the GitHub MCP server.
+**How it works**: mcpware runs inside a Docker container and launches other MCP servers as Docker containers. When you request a tool from a backend, mcpware:
+1. Starts the backend's Docker container (if not already running)
+2. Communicates with it via stdio (standard input/output)
+3. Routes your request to the appropriate backend
+4. Returns the response back to Claude
 
-**Important limitation**: Currently, mcpware only supports launching backend MCP servers that run inside Docker containers. Backend servers cannot run directly on the host machine. This is because mcpware itself runs in a Docker container and uses Docker-in-Docker to manage backends. Support for host-based backends may be added in future versions.
+The Docker socket mount (`/var/run/docker.sock`) gives mcpware access to the host's Docker daemon, allowing it to create and manage backend containers.
+
+**Important limitation**: When running mcpware in Docker (as shown in this guide), backend MCP servers MUST be Docker containers. NPM-based backends (like `npx @modelcontextprotocol/server-memory`) are NOT supported because:
+- mcpware's container doesn't have Node.js installed
+- File paths would be isolated to the container
+- Process communication across the container boundary doesn't work for non-Docker processes
+
+To use NPM-based backends, you would need to run mcpware directly on your host machine (not covered in this guide).
 
 ## Quick Start
 
@@ -406,22 +417,31 @@ Tests run automatically on GitHub Actions for:
 ## Architecture
 
 The gateway:
-1. Receives MCP requests via stdio
-2. Launches and manages backend MCP server processes
-3. Routes tool calls to appropriate backends
-4. Returns responses to the client
+1. Receives MCP requests via stdio from Claude Desktop
+2. Identifies which backend should handle the request
+3. Launches the backend's Docker container (if needed)
+4. Forwards the request to the backend via stdio
+5. Returns the backend's response to Claude Desktop
 
-### Docker-in-Docker Limitation
+### Container Architecture
 
-When mcpware runs inside a Docker container:
-- It uses the host's Docker daemon (via socket mount) to launch backend containers
-- Backend processes run as sibling containers, not child processes
-- NPM/host-based backends cannot be launched because:
-  - The mcpware container doesn't have Node.js or other host tools
-  - File system paths would refer to the container's filesystem, not the host
-  - Network isolation prevents proper stdio communication with host processes
+When running in Docker, mcpware uses a "Docker-out-of-Docker" approach:
+- mcpware runs in its own container
+- It accesses the host's Docker daemon through the mounted socket
+- Backend containers are created as siblings (not children) on the host
+- Communication happens through stdio pipes between containers
 
-This architectural constraint ensures security and isolation but limits backends to Docker-based implementations only.
+This is different from true "Docker-in-Docker" and is more secure and efficient.
+
+### Limitations of Container-Based Deployment
+
+The containerized deployment has these constraints:
+- **Only Docker backends**: Backend commands must start with `["docker", "run", ...]`
+- **No NPM/host tools**: The mcpware container lacks Node.js, Python, etc.
+- **Isolated filesystem**: Container can't access host files directly
+- **Network isolation**: Can't communicate with host processes via stdio
+
+For maximum flexibility (NPM backends, host tools), run mcpware directly on the host machine instead of in Docker.
 
 ## License
 
