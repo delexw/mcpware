@@ -26,7 +26,7 @@ cd mcpware
 echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
 
 # Build and configure
-docker-compose build
+docker compose build
 
 # Add to Claude Desktop and restart the app
 ```
@@ -57,7 +57,7 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
 
 4. Build the Docker image:
    ```bash
-   docker-compose build
+   docker compose build
    ```
 
 5. Add to Claude Desktop configuration:
@@ -72,8 +72,8 @@ Then configure Claude Desktop as shown in the [Installation](#installation) sect
    {
      "mcpServers": {
        "gateway": {
-         "command": "docker-compose",
-         "args": ["run", "--rm", "gateway"],
+         "command": "docker",
+         "args": ["compose", "run", "--rm", "gateway"],
          "cwd": "/path/to/mcpware"
        }
      }
@@ -168,16 +168,16 @@ Build and run with Docker Compose:
 
 ```bash
 # Build the image
-docker-compose build
+docker compose build
 
 # Run interactively (for testing)
-docker-compose run --rm gateway
+docker compose run --rm gateway
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Clean up
-docker-compose down
+docker compose down
 ```
 
 ### Environment Variables
