@@ -63,10 +63,13 @@ async def main():
         backend_configs.append(config)
     
     backend_forwarder = BackendForwarder(backend_configs)
-    await backend_forwarder.initialize()
+    # Don't initialize backends yet - wait until we're ready to handle messages
     
     protocol_handler = MCPProtocolHandler(config_manager, backend_forwarder)
     jsonrpc_handler = JSONRPCHandler(protocol_handler)
+    
+    # Flag to track if backends are initialized
+    backends_initialized = False
     
     try:
         # Read from stdin and write to stdout
@@ -81,25 +84,41 @@ async def main():
                 
             try:
                 data = json.loads(line)
+                
+                # Initialize backends on first valid request
+                if not backends_initialized:
+                    logger.info("Initializing backends on first request")
+                    await backend_forwarder.initialize()
+                    backends_initialized = True
+                
                 response = await jsonrpc_handler.handle_request(data)
-                print(json.dumps(response))
-                sys.stdout.flush()
+                
+                # Only send response if the original request had an id (not a notification)
+                if "id" in data and response is not None:
+                    print(json.dumps(response))
+                    sys.stdout.flush()
             except json.JSONDecodeError:
-                error_response = {
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {
-                        "code": -32700,
-                        "message": "Parse error"
+                # For parse errors, we should only send a response if it looks like
+                # the client was trying to send a JSON-RPC request
+                if line.startswith('{') and ('jsonrpc' in line or 'method' in line):
+                    error_response = {
+                        "jsonrpc": "2.0",
+                        "id": None,
+                        "error": {
+                            "code": -32700,
+                            "message": "Parse error"
+                        }
                     }
-                }
-                print(json.dumps(error_response))
-                sys.stdout.flush()
+                    print(json.dumps(error_response))
+                    sys.stdout.flush()
+                else:
+                    logger.warning(f"Ignoring non-JSON input: {line[:50]}...")
                 
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     finally:
-        await backend_forwarder.close()
+        if backends_initialized:
+            await backend_forwarder.close()
 
 
 if __name__ == "__main__":

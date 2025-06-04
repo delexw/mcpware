@@ -191,20 +191,7 @@ class MCPProtocolHandler:
     async def _discover_single_backend_tools(self, backend_name: str) -> Dict[str, Any]:
         """Discover tools for a single backend"""
         try:
-            # Check if backend has tools capability
-            if backend_name not in self._backend_capabilities:
-                return self._create_error_response(f"Backend {backend_name} not initialized")
-            
-            capabilities = self._backend_capabilities[backend_name]
-            if "tools" not in capabilities:
-                return {
-                    "content": [{
-                        "type": "text",
-                        "text": f"Backend '{backend_name}' does not support tools"
-                    }]
-                }
-            
-            # Request tools from backend
+            # Simply try to get tools from the backend
             list_request = {
                 "jsonrpc": "2.0",
                 "method": "tools/list",
@@ -250,13 +237,6 @@ class MCPProtocolHandler:
         discoveries = []
         
         for backend_name in self.config_manager.backends.keys():
-            if backend_name not in self._backend_capabilities:
-                continue
-            
-            capabilities = self._backend_capabilities[backend_name]
-            if "tools" not in capabilities:
-                continue
-            
             try:
                 # Request tools from backend
                 list_request = {

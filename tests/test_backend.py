@@ -78,7 +78,9 @@ class TestStdioBackend:
         # Mock the subprocess
         mock_process = AsyncMock()
         mock_process.stdout = AsyncMock()
+        mock_process.stderr = AsyncMock()
         mock_process.stdout.readline = AsyncMock(return_value=b'')
+        mock_process.stderr.readline = AsyncMock(return_value=b'')
         mock_subprocess.return_value = mock_process
         
         await backend.start()
@@ -94,11 +96,17 @@ class TestStdioBackend:
         
         assert backend.process == mock_process
         assert backend.read_task is not None
+        assert backend.stderr_task is not None
         
         # Clean up
         backend.read_task.cancel()
         try:
             await backend.read_task
+        except asyncio.CancelledError:
+            pass
+        backend.stderr_task.cancel()
+        try:
+            await backend.stderr_task
         except asyncio.CancelledError:
             pass
     
@@ -118,6 +126,8 @@ class TestStdioBackend:
         mock_process.stdin.write = Mock()  # Regular sync method
         mock_process.stdin.drain = AsyncMock()  # Async method
         mock_process.stdout = AsyncMock()
+        mock_process.stderr = AsyncMock()
+        mock_process.returncode = None  # Process is still running
         
         # Mock response
         response = {"jsonrpc": "2.0", "id": 1, "result": "test_result"}
@@ -127,6 +137,7 @@ class TestStdioBackend:
                 b''  # EOF
             ]
         )
+        mock_process.stderr.readline = AsyncMock(return_value=b'')  # No stderr output
         mock_subprocess.return_value = mock_process
         
         await backend.start()
@@ -144,6 +155,11 @@ class TestStdioBackend:
             await backend.read_task
         except asyncio.CancelledError:
             pass
+        backend.stderr_task.cancel()
+        try:
+            await backend.stderr_task
+        except asyncio.CancelledError:
+            pass
     
     @pytest.mark.asyncio
     @patch('asyncio.create_subprocess_exec')
@@ -155,7 +171,10 @@ class TestStdioBackend:
         mock_process.stdin.write = Mock()  # Regular sync method
         mock_process.stdin.drain = AsyncMock()  # Async method
         mock_process.stdout = AsyncMock()
+        mock_process.stderr = AsyncMock()
+        mock_process.returncode = None  # Process is still running
         mock_process.stdout.readline = AsyncMock(return_value=b'')  # No response
+        mock_process.stderr.readline = AsyncMock(return_value=b'')  # No stderr output
         mock_subprocess.return_value = mock_process
         
         # Set short timeout
@@ -174,6 +193,38 @@ class TestStdioBackend:
             await backend.read_task
         except asyncio.CancelledError:
             pass
+        backend.stderr_task.cancel()
+        try:
+            await backend.stderr_task
+        except asyncio.CancelledError:
+            pass
+    
+    @pytest.mark.asyncio
+    async def test_start_with_missing_env_vars(self):
+        """Test that start fails when env vars are missing"""
+        # Remove any existing env vars
+        test_vars = ["TEST_VAR_1", "TEST_VAR_2"]
+        for var in test_vars:
+            if var in os.environ:
+                del os.environ[var]
+        
+        config = {
+            "command": ["echo", "test"],
+            "env": {
+                "TEST_VAR_1": "${TEST_VAR_1}",
+                "TEST_VAR_2": "${TEST_VAR_2}"
+            },
+            "timeout": 30
+        }
+        backend = StdioBackend("test", config)
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            await backend.start()
+        
+        error_msg = str(exc_info.value)
+        assert "requires environment variables that are not set" in error_msg
+        assert "TEST_VAR_1" in error_msg
+        assert "TEST_VAR_2" in error_msg
     
     @pytest.mark.asyncio
     async def test_stop(self, backend):
@@ -184,14 +235,16 @@ class TestStdioBackend:
         backend.process.kill = Mock()
         backend.process.wait = AsyncMock()
         backend.read_task = asyncio.create_task(asyncio.sleep(10))
+        backend.stderr_task = asyncio.create_task(asyncio.sleep(10))
         
         await backend.stop()
         
         assert backend.process.terminate.called
         # Give a bit of time for task cancellation to propagate
         await asyncio.sleep(0.1)
-        # Task should be cancelled after stop
+        # Tasks should be cancelled after stop
         assert backend.read_task.cancelled()
+        assert backend.stderr_task.cancelled()
 
 
 class TestBackendForwarder:

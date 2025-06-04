@@ -7,7 +7,8 @@ import logging
 import asyncio
 import subprocess
 import os
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Dict, Optional, List
 from asyncio import StreamReader, StreamWriter
 
 from .utils import substitute_env_vars
@@ -25,24 +26,51 @@ class StdioBackend:
         self.reader: Optional[StreamReader] = None
         self.writer: Optional[StreamWriter] = None
         self.read_task: Optional[asyncio.Task] = None
+        self.stderr_task: Optional[asyncio.Task] = None
         self.pending_requests: Dict[Any, asyncio.Future] = {}
         self.next_id = 1
         
-    async def start(self):
-        """Start the backend process"""
+    def _prepare_command(self) -> List[str]:
+        """Prepare the command for execution"""
         command = self.config.get("command", [])
         if isinstance(command, str):
             command = [command]
-        
-        # Substitute environment variables in command
-        command = [substitute_env_vars(part) for part in command]
-        
-        # Prepare environment
+        return command
+    
+    def _prepare_environment(self) -> Dict[str, str]:
+        """Prepare environment variables with substitution"""
         env = os.environ.copy()
-        for key, value in self.config.get("env", {}).items():
-            env[key] = substitute_env_vars(value)
+        unsubstituted_vars = []
         
-        logger.info(f"Starting backend {self.name} with command: {command}")
+        for key, value in self.config.get("env", {}).items():
+            substituted_value = substitute_env_vars(value)
+            # Check if substitution failed (placeholder remains)
+            if re.search(r'\$\{[^}]+\}', substituted_value):
+                var_matches = re.findall(r'\$\{([^}]+)\}', substituted_value)
+                unsubstituted_vars.extend(var_matches)
+            env[key] = substituted_value
+        
+        # Check for any unsubstituted variables in env section
+        if unsubstituted_vars:
+            error_msg = f"Backend {self.name} requires environment variables that are not set: {', '.join(set(unsubstituted_vars))}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+            
+        return env
+    
+    async def start(self):
+        """Start the backend process"""
+        command = self._prepare_command()
+        env = self._prepare_environment()
+        
+        logger.info(f"Starting backend {self.name}")
+        logger.info(f"  Command: {' '.join(command)}")
+        logger.debug(f"  Working directory: {os.getcwd()}")
+        
+        # Log environment variables that were set/modified
+        env_diff = {k: v for k, v in env.items() if k not in os.environ or os.environ[k] != v}
+        if env_diff:
+            logger.debug(f"  Modified environment variables: {list(env_diff.keys())}")
         
         # Start the process
         self.process = await asyncio.create_subprocess_exec(
@@ -56,6 +84,11 @@ class StdioBackend:
         # Start reading from the backend
         self.read_task = asyncio.create_task(self._read_loop())
         
+        # Start monitoring stderr for debugging
+        self.stderr_task = asyncio.create_task(self._stderr_monitor())
+        
+        logger.info(f"Backend {self.name} process started with PID: {self.process.pid}")
+        
     async def _read_loop(self):
         """Read responses from the backend"""
         try:
@@ -68,9 +101,15 @@ class StdioBackend:
                     response = json.loads(line.decode().strip())
                     request_id = response.get("id")
                     
+                    # Log all responses for debugging
+                    logger.debug(f"Backend {self.name} sent response: {response}")
+                    
                     if request_id in self.pending_requests:
                         future = self.pending_requests.pop(request_id)
                         future.set_result(response)
+                    else:
+                        # Log unexpected responses that don't match any pending request
+                        logger.warning(f"Backend {self.name} sent unexpected response with id={request_id}: {response}")
                 except json.JSONDecodeError:
                     logger.error(f"Invalid JSON from backend {self.name}: {line}")
                 except Exception as e:
@@ -79,10 +118,33 @@ class StdioBackend:
         except Exception as e:
             logger.error(f"Read loop error for {self.name}: {e}")
             
+    async def _stderr_monitor(self):
+        """Monitor stderr output for debugging"""
+        if not self.process or not self.process.stderr:
+            return
+            
+        try:
+            while True:
+                line = await self.process.stderr.readline()
+                if not line:
+                    break
+                    
+                stderr_msg = line.decode().strip()
+                if stderr_msg:
+                    logger.warning(f"Backend {self.name} stderr: {stderr_msg}")
+                    
+        except Exception as e:
+            logger.error(f"Error monitoring stderr for {self.name}: {e}")
+            
     async def send_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """Send a request to the backend and wait for response"""
         if not self.process or not self.process.stdin:
             raise RuntimeError(f"Backend {self.name} is not running")
+        
+        # Check if process is still alive
+        if self.process.returncode is not None:
+            logger.error(f"Backend {self.name} process has exited with code: {self.process.returncode}")
+            raise RuntimeError(f"Backend {self.name} process has exited unexpectedly")
         
         # Assign ID if not present
         if "id" not in request:
@@ -90,6 +152,9 @@ class StdioBackend:
             self.next_id += 1
         
         request_id = request["id"]
+        method = request.get("method", "unknown")
+        
+        logger.debug(f"Backend {self.name} sending request {request_id}: {method}")
         
         # Create future for the response
         future = asyncio.Future()
@@ -102,14 +167,20 @@ class StdioBackend:
             await self.process.stdin.drain()
             
             # Wait for response with timeout
-            response = await asyncio.wait_for(future, timeout=self.config.get("timeout", 30))
+            timeout = self.config.get("timeout", 30)
+            logger.debug(f"Backend {self.name} waiting for response to {request_id} (timeout: {timeout}s)")
+            response = await asyncio.wait_for(future, timeout=timeout)
+            logger.debug(f"Backend {self.name} received response for {request_id}")
             return response
             
         except asyncio.TimeoutError:
             self.pending_requests.pop(request_id, None)
+            logger.error(f"Backend {self.name} request {request_id} ({method}) timed out after {timeout}s")
+            logger.error(f"  Pending requests: {list(self.pending_requests.keys())}")
             raise TimeoutError(f"Request to backend {self.name} timed out")
         except Exception as e:
             self.pending_requests.pop(request_id, None)
+            logger.error(f"Backend {self.name} request {request_id} failed: {e}")
             raise
             
     async def stop(self):
@@ -117,10 +188,21 @@ class StdioBackend:
         if self.read_task:
             self.read_task.cancel()
             
+        if self.stderr_task:
+            self.stderr_task.cancel()
+            
         if self.process:
-            self.process.terminate()
             try:
+                self.process.terminate()
                 await asyncio.wait_for(self.process.wait(), timeout=5)
+            except ProcessLookupError:
+                # Process already terminated
+                pass
             except asyncio.TimeoutError:
-                self.process.kill()
-                await self.process.wait() 
+                # Force kill if terminate didn't work
+                try:
+                    self.process.kill()
+                    await self.process.wait()
+                except ProcessLookupError:
+                    # Process already terminated
+                    pass 

@@ -78,9 +78,9 @@ class TestGatewayServerIntegration:
         """Test handling invalid JSON input"""
         from gateway_server import main
         
-        # Mock stdin with invalid JSON
+        # Mock stdin with invalid JSON that looks like JSON-RPC
         mock_stdin.readline.side_effect = [
-            "{ invalid json }\n",
+            '{"jsonrpc": "2.0", invalid json }\n',
             ""  # EOF
         ]
         

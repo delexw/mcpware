@@ -15,17 +15,7 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
       "description": "GitHub MCP Server",
-      "timeout": 30
-    },
-    {
-      "name": "example",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ],
-      "description": "Example Memory MCP Server",
-      "timeout": 30
+      "timeout": 60
     }
   ]
 }

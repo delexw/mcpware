@@ -20,6 +20,22 @@ class JSONRPCHandler:
         """Handle incoming JSON-RPC request"""
         method = data.get("method", "")
         params = data.get("params", {})
+        
+        # Check if this is a notification (no id field at all)
+        # Note: id: null is still a request, not a notification
+        if "id" not in data:
+            # This is a notification - no response should be sent
+            logger.debug(f"Received notification: {method}")
+            
+            # Handle known notifications
+            if method == "notifications/cancelled":
+                # Log the cancellation but don't do anything else
+                logger.debug(f"Received cancellation notification: {params}")
+            # Add other notification handlers here as needed
+            
+            return None
+        
+        # This is a request (has id field, even if null)
         request_id = data.get("id")
         
         try:
@@ -38,6 +54,13 @@ class JSONRPCHandler:
                 response = await self.protocol_handler.handle_list_prompts()
             elif method == "prompts/get":
                 response = await self.protocol_handler.handle_get_prompt(params)
+            elif method == "notifications/cancelled":
+                # This shouldn't happen since we handle it above, but just in case
+                return self._create_error_response(
+                    request_id,
+                    -32601,
+                    f"Method {method} is a notification and should not have an id"
+                )
             else:
                 return self._create_error_response(
                     request_id,

@@ -544,24 +544,20 @@ class TestJSONRPCHandler:
     @pytest.mark.asyncio
     async def test_handle_notification(self, jsonrpc_handler, mock_protocol_handler):
         """Test handling notification (no id)"""
-        # Set up mock to return a proper response
-        mock_protocol_handler.handle_initialize.return_value = {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {}
-        }
-        
         request = {
             "jsonrpc": "2.0",
-            "method": "initialize",
-            "params": {}
+            "method": "notifications/cancelled",
+            "params": {"requestId": "some-id"}
+            # No "id" field - this is a notification
         }
         
         response = await jsonrpc_handler.handle_request(request)
         
-        # Notifications still get responses in this implementation, but with None id
-        assert response["id"] is None
-        assert response["jsonrpc"] == "2.0"
-        assert "result" in response
+        # Notifications should return None (no response)
+        assert response is None
+        
+        # The protocol handler should not be called for notifications
+        mock_protocol_handler.handle_initialize.assert_not_called()
     
     def test_create_success_response(self, jsonrpc_handler):
         """Test creating success response"""
