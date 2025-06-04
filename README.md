@@ -217,6 +217,63 @@ See `config.example.json` for a more comprehensive example with Docker-based bac
 - GitHub MCP Server
 - Time MCP Server
 
+### Example: Connecting to Host Services
+
+Here's a comprehensive example showing how to configure backends that connect to services running on your host machine:
+
+```json
+{
+  "backends": [
+    {
+      "name": "github",
+      "command": ["docker", "run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "description": "GitHub MCP Server",
+      "timeout": 30
+    },
+    {
+      "name": "local-mysql",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "bytebase/dbhub",
+        "--transport", "stdio",
+        "--dsn", "mysql://root:password@host.docker.internal:3306/myapp?sslmode=disable"
+      ],
+      "description": "Local MySQL Database",
+      "timeout": 30
+    },
+    {
+      "name": "local-postgres", 
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "dbhub/postgres",
+        "--dsn", "postgres://user:pass@host.docker.internal:5432/mydb"
+      ],
+      "description": "Local PostgreSQL Database",
+      "timeout": 30
+    },
+    {
+      "name": "local-redis",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "mcp/redis",
+        "--host", "host.docker.internal",
+        "--port", "6379"
+      ],
+      "description": "Local Redis Instance",
+      "timeout": 30
+    }
+  ]
+}
+```
+
+In this configuration:
+- `host.docker.internal` resolves to your host machine's IP address
+- Backend containers can connect to any service listening on host ports
+- This works because backends are sibling containers, not nested children
+
 ### Backend Configuration Options
 
 - `name`: Unique identifier for the backend
@@ -432,6 +489,29 @@ When running in Docker, mcpware uses a "Docker-out-of-Docker" approach:
 - Communication happens through stdio pipes between containers
 
 This is different from true "Docker-in-Docker" and is more secure and efficient.
+
+#### Accessing Host Services from Backend Containers
+
+Because backend containers are created as siblings (not children) of the mcpware container, they can access services running on the host machine using `host.docker.internal`. This is particularly useful for:
+
+- **Local databases**: Connect to MySQL, PostgreSQL, Redis, etc. running on your host
+- **Development services**: Access local API servers, mock services, or other tools
+- **Shared resources**: Connect to any service listening on host ports
+
+**Example**: A database backend configuration connecting to host MySQL:
+```json
+{
+  "name": "local-mysql",
+  "command": [
+    "docker", "run", "-i", "--rm",
+    "dbhub/mysql-mcp-server",
+    "--dsn", "mysql://user:pass@host.docker.internal:3306/mydb"
+  ],
+  "description": "Local MySQL Database"
+}
+```
+
+This architecture means backend containers have the same networking capabilities as any container started directly with `docker run`, making it easy to integrate with your local development environment.
 
 ### Limitations of Container-Based Deployment
 
