@@ -293,10 +293,91 @@ This allows you to:
 
 ## Development
 
-### Running locally
+### Prerequisites
+
+Ensure you have Python 3.10+ installed:
+```bash
+python --version  # Should show Python 3.10 or higher
+```
+
+### Development Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/delexw/mcpware.git
+   cd mcpware
+   ```
+
+2. Create a virtual environment (recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install development dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Development Dependencies
+
+The project uses minimal dependencies. All core functionality is implemented using the Python standard library.
+
+**Testing dependencies** (included in requirements.txt):
+- `pytest` - Testing framework
+- `pytest-asyncio` - Async test support
+- `pytest-cov` - Code coverage reporting
+
+**Optional development tools** (install separately if needed):
+```bash
+# Code formatting
+pip install black isort
+
+# Linting
+pip install flake8 pylint mypy
+
+# Development convenience
+pip install pytest-watch  # Auto-run tests on file changes
+```
+
+### Running Locally
 
 ```bash
+# Run the gateway server
 python gateway_server.py --config config.json
+
+# Run with debug logging
+python gateway_server.py --config config.json --log-level DEBUG
+```
+
+### Code Style
+
+Format your code before committing:
+```bash
+# Format with black (if installed)
+black src/ tests/ gateway_server.py
+
+# Sort imports (if installed)
+isort src/ tests/ gateway_server.py
+
+# Run linting (if installed)
+flake8 src/ tests/ gateway_server.py --max-line-length=120
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=src --cov=gateway_server --cov-report=html
+
+# Run specific test file
+pytest tests/test_config.py
+
+# Run tests in watch mode (requires pytest-watch)
+pytest-watch
 ```
 
 ### Docker
