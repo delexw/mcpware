@@ -82,10 +82,13 @@ class TestStdioBackend:
         """Test starting the backend process"""
         # Mock the subprocess
         mock_process = AsyncMock()
+        mock_process.returncode = None  # Process is still running
+        mock_process.pid = 12345  # Mock PID
         mock_process.stdout = AsyncMock()
         mock_process.stderr = AsyncMock()
         mock_process.stdout.readline = AsyncMock(return_value=b'')
         mock_process.stderr.readline = AsyncMock(return_value=b'')
+        mock_process.stderr.read = AsyncMock(return_value=b'')  # For error handling
         mock_subprocess.return_value = mock_process
         
         await backend.start()
@@ -127,28 +130,46 @@ class TestStdioBackend:
         """Test sending request and receiving response"""
         # Mock the subprocess
         mock_process = AsyncMock()
+        mock_process.returncode = None  # Process is still running
+        mock_process.pid = 12345  # Mock PID
         mock_process.stdin = Mock()  # Use regular Mock for stdin
         mock_process.stdin.write = Mock()  # Regular sync method
         mock_process.stdin.drain = AsyncMock()  # Async method
         mock_process.stdout = AsyncMock()
         mock_process.stderr = AsyncMock()
-        mock_process.returncode = None  # Process is still running
         
         # Mock response
         response = {"jsonrpc": "2.0", "id": 1, "result": "test_result"}
-        mock_process.stdout.readline = AsyncMock(
-            side_effect=[
-                json.dumps(response).encode() + b'\n',
-                b''  # EOF
-            ]
-        )
+        response_bytes = json.dumps(response).encode() + b'\n'
+        
+        # Create a flag to track if request has been sent
+        request_sent = asyncio.Event()
+        
+        async def mock_readline():
+            # First call waits for request to be sent
+            if not mock_process.stdout.readline.call_count > 1:
+                await request_sent.wait()
+                await asyncio.sleep(0.01)  # Small delay
+                return response_bytes
+            # Second call returns EOF
+            return b''
+        
+        mock_process.stdout.readline = AsyncMock(side_effect=mock_readline)
         mock_process.stderr.readline = AsyncMock(return_value=b'')  # No stderr output
+        mock_process.stderr.read = AsyncMock(return_value=b'')  # For error handling
         mock_subprocess.return_value = mock_process
+        
+        # Override drain to signal that request was sent
+        original_drain = mock_process.stdin.drain
+        async def mock_drain():
+            await original_drain()
+            request_sent.set()
+        mock_process.stdin.drain = mock_drain
         
         await backend.start()
         
         # Send request
-        request = {"method": "test_method", "params": {}}
+        request = {"id": 1, "method": "test_method", "params": {}}
         result = await backend.send_request(request)
         
         assert result == response
@@ -181,14 +202,16 @@ class TestStdioBackend:
         
         # Mock the subprocess
         mock_process = AsyncMock()
+        mock_process.returncode = None  # Process is still running
+        mock_process.pid = 12345  # Mock PID
         mock_process.stdin = Mock()  # Use regular Mock for stdin
         mock_process.stdin.write = Mock()  # Regular sync method
         mock_process.stdin.drain = AsyncMock()  # Async method
         mock_process.stdout = AsyncMock()
         mock_process.stderr = AsyncMock()
-        mock_process.returncode = None  # Process is still running
         mock_process.stdout.readline = AsyncMock(return_value=b'')  # No response
         mock_process.stderr.readline = AsyncMock(return_value=b'')  # No stderr output
+        mock_process.stderr.read = AsyncMock(return_value=b'')  # For error handling
         mock_subprocess.return_value = mock_process
         
         await backend.start()
