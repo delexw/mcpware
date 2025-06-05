@@ -2,39 +2,39 @@
 Sensitive data detection security policy
 Scans responses for sensitive data patterns and blocks leaks from public backends
 """
-import re
 import json
 import logging
-from typing import Any, List, Tuple, Pattern as RePattern, NamedTuple
+from typing import Any, List, Tuple, Dict
 from .base import SecurityPolicy, PolicyResult, ValidationContext
+from .validators import (
+    PhoneValidator,
+    EmailValidator, 
+    PasswordValidator,
+    ApiKeyValidator,
+    CreditCardValidator
+)
 
 logger = logging.getLogger(__name__)
 
 
-class SensitivePattern(NamedTuple):
-    """Structured pattern definition for better clarity"""
-    pattern: RePattern[str]
-    name: str
-    
-    @classmethod
-    def create(cls, pattern_str: str, name: str) -> 'SensitivePattern':
-        """Factory method to create pattern with compiled regex"""
-        return cls(re.compile(pattern_str, re.IGNORECASE), name)
-
-
 class SensitiveDataPolicy(SecurityPolicy):
-    """Detects and prevents sensitive data leaks"""
+    """Detects and prevents sensitive data leaks using specialized validators"""
     
-    # Pre-compiled patterns for better performance
-    SENSITIVE_PATTERNS: List[SensitivePattern] = [
-        SensitivePattern.create(r'(?i)(password|passwd|pwd)\s*[:=]\s*\S+', 'password'),
-        SensitivePattern.create(r'(?i)(api[_-]?key|apikey)\s*[:=]\s*\S+', 'api_key'),
-        SensitivePattern.create(r'(?i)(secret|token)\s*[:=]\s*\S+', 'secret'),
-        SensitivePattern.create(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', 'email'),
-        SensitivePattern.create(r'\b(?:\d{3}[-.]?)?\d{3}[-.]?\d{4}\b', 'phone'),
-        SensitivePattern.create(r'\b\d{3}-\d{2}-\d{4}\b', 'ssn'),
-        SensitivePattern.create(r'(?i)(credit[_-]?card|cc[_-]?number)\s*[:=]\s*\d+', 'credit_card'),
-    ]
+    def __init__(self, config: dict):
+        """Initialize policy with validators"""
+        super().__init__(config)
+        
+        # Initialize all validators
+        self.validators = [
+            PhoneValidator(),
+            EmailValidator(),
+            PasswordValidator(),
+            ApiKeyValidator(),
+            CreditCardValidator()
+        ]
+        
+        # Create a mapping for quick lookup
+        self.validator_map = {v.name: v for v in self.validators}
     
     def _is_enabled(self) -> bool:
         """Check if sensitive data leak prevention is enabled"""
@@ -59,17 +59,46 @@ class SensitiveDataPolicy(SecurityPolicy):
         # Convert response to string for pattern matching
         response_str = json.dumps(response) if isinstance(response, dict) else str(response)
         
-        # Check for sensitive patterns using list comprehension
-        detected_patterns = [
-            pattern.name 
-            for pattern in self.SENSITIVE_PATTERNS 
-            if pattern.pattern.search(response_str)
-        ]
+        # Check each validator
+        detected_patterns = []
+        detected_details: Dict[str, List[str]] = {}
+        
+        for validator in self.validators:
+            if validator.contains_sensitive_data(response_str):
+                detected_patterns.append(validator.name)
+                
+                # Optionally collect matched values for logging (masked)
+                matches = validator.find_matches(response_str)
+                if matches:
+                    # Store first few masked examples
+                    examples = []
+                    for match_text, _, _ in matches[:3]:  # Limit to first 3 examples
+                        masked = validator.mask_sensitive_data(match_text)
+                        examples.append(masked)
+                    detected_details[validator.name] = examples
         
         if detected_patterns and backend_security_level == "public":
-            logger.warning(f"Blocked sensitive data leak from {backend_name}: {detected_patterns}")
+            # Log with masked examples for debugging
+            log_msg = f"Blocked sensitive data leak from {backend_name}: {detected_patterns}"
+            if logger.isEnabledFor(logging.DEBUG) and detected_details:
+                log_msg += f" Examples (masked): {detected_details}"
+            logger.warning(log_msg)
         
         return bool(detected_patterns), detected_patterns
+    
+    def add_custom_validator(self, validator) -> None:
+        """Add a custom validator to the policy"""
+        self.validators.append(validator)
+        self.validator_map[validator.name] = validator
+    
+    def remove_validator(self, name: str) -> bool:
+        """Remove a validator by name"""
+        if name in self.validator_map:
+            validator = self.validator_map[name]
+            self.validators.remove(validator)
+            del self.validator_map[name]
+            return True
+        return False
     
     @property
     def name(self) -> str:

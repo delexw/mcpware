@@ -27,6 +27,7 @@ Route MCP requests intelligently to multiple backend servers with comprehensive 
 - **Blocks SQL injection and sensitive data exposure**
 - **Taint tracking** stops all access after suspicious activity
 - **Mandatory security classification** for each backend (public/internal/sensitive)
+- **Opt In/Out Security Check from config.json**
 
 ### 🔧 Additional Benefits
 - **Single entry point** for multiple MCP servers
