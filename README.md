@@ -22,7 +22,7 @@ A Model Context Protocol (MCP) gateway server that routes tool calls to multiple
 - **Solution**: mcpware exposes only 2 routing tools while providing access to unlimited backend tools
 - **Result**: Connect to GitHub (50+ tools), databases, and more through a single gateway!
 
-### 🔒 Built-in Security
+### 🔒 Built-in Security 🧪 *(Experimental)*
 - **Prevents cross-backend data leakage** (e.g., database → GitHub)
 - **Blocks SQL injection and sensitive data exposure**
 - **Taint tracking** stops all access after suspicious activity
