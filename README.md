@@ -54,7 +54,7 @@ Then configure MCP Clients as shown in the [Installation](#installation) section
 mcpware runs as a Docker container that:
 1. Receives requests from MCP clients via stdio
 2. Routes them to the appropriate backend MCP server (also running in Docker)
-3. Returns responses back to Claude
+3. Returns responses back to MCP client
 
 **Important**: Backend servers must be Docker containers when running mcpware in Docker. NPM-based backends require running mcpware on the host.
 
@@ -144,7 +144,7 @@ volumes:
 ```
 
 #### Windows (Native Containers)
-Update the Docker socket path in your Claude Desktop configuration:
+Update the Docker socket path:
 ```json
 {
   "mcpServers": {
