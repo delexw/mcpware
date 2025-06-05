@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional, List
 from asyncio import StreamReader, StreamWriter
 
 from .utils import substitute_env_vars
+from .config import BackendMCPConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 class StdioBackend:
     """Manages communication with a single stdio-based MCP backend"""
     
-    def __init__(self, name: str, config: Dict[str, Any]):
+    def __init__(self, name: str, config: BackendMCPConfig):
         self.name = name
         self.config = config
         self.process: Optional[subprocess.Popen] = None
@@ -32,17 +33,14 @@ class StdioBackend:
         
     def _prepare_command(self) -> List[str]:
         """Prepare the command for execution"""
-        command = self.config.get("command", [])
-        if isinstance(command, str):
-            command = [command]
-        return command
+        return self.config.get_full_command()
     
     def _prepare_environment(self) -> Dict[str, str]:
         """Prepare environment variables with substitution"""
         env = os.environ.copy()
         unsubstituted_vars = []
         
-        for key, value in self.config.get("env", {}).items():
+        for key, value in self.config.env.items():
             substituted_value = substitute_env_vars(value)
             # Check if substitution failed (placeholder remains)
             if re.search(r'\$\{[^}]+\}', substituted_value):
@@ -167,7 +165,7 @@ class StdioBackend:
             await self.process.stdin.drain()
             
             # Wait for response with timeout
-            timeout = self.config.get("timeout", 30)
+            timeout = self.config.timeout
             logger.info(f"Backend {self.name} waiting for response to {request_id} (timeout: {timeout}s)")
             response = await asyncio.wait_for(future, timeout=timeout)
             logger.info(f"Backend {self.name} received response for {request_id}")

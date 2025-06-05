@@ -13,40 +13,46 @@ from src.config import BackendMCPConfig, ConfigurationManager, ConfigurationErro
 class TestBackendMCPConfig:
     """Test cases for BackendMCPConfig class"""
     
-    def test_initialization_with_list_command(self):
-        """Test initialization with command as list"""
+    def test_initialization_with_separate_command_args(self):
+        """Test initialization with separate command and args"""
         config = BackendMCPConfig(
             name="test_backend",
-            command=["python", "script.py"],
+            command="python",
+            args=["script.py", "--verbose"],
             description="Test backend",
             timeout=30,
             env={"KEY": "value"}
         )
         
         assert config.name == "test_backend"
-        assert config.command == ["python", "script.py"]
+        assert config.command == "python"
+        assert config.args == ["script.py", "--verbose"]
         assert config.description == "Test backend"
         assert config.timeout == 30
         assert config.env == {"KEY": "value"}
+        assert config.get_full_command() == ["python", "script.py", "--verbose"]
     
-    def test_initialization_with_string_command(self):
-        """Test initialization with command as string (should convert to list)"""
+    def test_initialization_with_no_args(self):
+        """Test initialization with command but no args"""
         config = BackendMCPConfig(
             name="test_backend",
-            command="python script.py",
+            command="python",
             description="Test backend"
         )
         
-        assert config.command == ["python script.py"]
+        assert config.command == "python"
+        assert config.args == []
+        assert config.get_full_command() == ["python"]
     
     def test_initialization_with_defaults(self):
         """Test initialization with default values"""
         config = BackendMCPConfig(
             name="test_backend",
-            command=["python"],
-            description="Test backend"
+            command="python"
         )
         
+        assert config.args == []
+        assert config.description == "No description"
         assert config.timeout == 30
         assert config.env == {}
     
@@ -54,8 +60,7 @@ class TestBackendMCPConfig:
         """Test that env defaults to empty dict when not provided"""
         config = BackendMCPConfig(
             name="test_backend",
-            command=["python"],
-            description="Test backend"
+            command="python"
             # env not provided - should default to {}
         )
         
@@ -78,14 +83,16 @@ class TestConfigurationManager:
             "backends": [
                 {
                     "name": "backend1",
-                    "command": ["python", "backend1.py"],
+                    "command": "python",
+                    "args": ["backend1.py"],
                     "description": "Backend 1",
                     "timeout": 20,
                     "env": {"VAR1": "value1"}
                 },
                 {
                     "name": "backend2",
-                    "command": "python backend2.py",
+                    "command": "python",
+                    "args": ["backend2.py"],
                     "description": "Backend 2"
                 }
             ],
@@ -112,7 +119,9 @@ class TestConfigurationManager:
             # Check backend1
             backend1 = backends["backend1"]
             assert backend1.name == "backend1"
-            assert backend1.command == ["python", "backend1.py"]
+            assert backend1.command == "python"
+            assert backend1.args == ["backend1.py"]
+            assert backend1.get_full_command() == ["python", "backend1.py"]
             assert backend1.description == "Backend 1"
             assert backend1.timeout == 20
             assert backend1.env == {"VAR1": "value1"}
@@ -120,7 +129,9 @@ class TestConfigurationManager:
             # Check backend2
             backend2 = backends["backend2"]
             assert backend2.name == "backend2"
-            assert backend2.command == ["python backend2.py"]
+            assert backend2.command == "python"
+            assert backend2.args == ["backend2.py"]
+            assert backend2.get_full_command() == ["python", "backend2.py"]
             assert backend2.description == "Backend 2"
             assert backend2.timeout == 30  # default
             assert backend2.env == {}
@@ -180,7 +191,8 @@ class TestConfigurationManager:
         config_data = {
             "backends": [
                 {
-                    "command": ["python", "backend.py"],
+                    "command": "python",
+                    "args": ["backend.py"],
                     "description": "Backend"
                 }
             ],
@@ -218,11 +230,15 @@ class TestConfigurationManager:
             
             # Verify test_backend_1
             backend1 = backends["test_backend_1"]
-            assert backend1.command == ["echo", "backend1"]
+            assert backend1.command == "echo"
+            assert backend1.args == ["backend1"]
+            assert backend1.get_full_command() == ["echo", "backend1"]
             assert backend1.timeout == 10
             assert backend1.env == {"TEST_VAR": "value1"}
             
             # Verify test_backend_2
             backend2 = backends["test_backend_2"]
-            assert backend2.command == ["echo backend2"]
+            assert backend2.command == "echo"
+            assert backend2.args == ["backend2"]
+            assert backend2.get_full_command() == ["echo", "backend2"]
             assert backend2.timeout == 5 

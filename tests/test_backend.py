@@ -8,6 +8,7 @@ import os
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
 
 from src.backend import substitute_env_vars, StdioBackend, BackendForwarder
+from src.config import BackendMCPConfig
 
 
 class TestSubstituteEnvVars:
@@ -49,11 +50,13 @@ class TestStdioBackend:
     @pytest.fixture
     def backend_config(self):
         """Fixture for backend configuration"""
-        return {
-            "command": ["echo", "test"],
-            "timeout": 30,
-            "env": {"TEST_ENV": "value"}
-        }
+        return BackendMCPConfig(
+            name="test_backend",
+            command="echo",
+            args=["test"],
+            timeout=30,
+            env={"TEST_ENV": "value"}
+        )
     
     @pytest.fixture
     def backend(self, backend_config):
@@ -63,7 +66,9 @@ class TestStdioBackend:
     def test_initialization(self, backend):
         """Test StdioBackend initialization"""
         assert backend.name == "test_backend"
-        assert backend.config["command"] == ["echo", "test"]
+        assert backend.config.command == "echo"
+        assert backend.config.args == ["test"]
+        assert backend.config.get_full_command() == ["echo", "test"]
         assert backend.process is None
         assert backend.reader is None
         assert backend.writer is None
@@ -163,8 +168,17 @@ class TestStdioBackend:
     
     @pytest.mark.asyncio
     @patch('asyncio.create_subprocess_exec')
-    async def test_send_request_timeout(self, mock_subprocess, backend):
+    async def test_send_request_timeout(self, mock_subprocess):
         """Test request timeout handling"""
+        # Create backend with short timeout
+        config = BackendMCPConfig(
+            name="test_backend",
+            command="echo",
+            args=["test"],
+            timeout=0.1  # Short timeout
+        )
+        backend = StdioBackend("test_backend", config)
+        
         # Mock the subprocess
         mock_process = AsyncMock()
         mock_process.stdin = Mock()  # Use regular Mock for stdin
@@ -176,9 +190,6 @@ class TestStdioBackend:
         mock_process.stdout.readline = AsyncMock(return_value=b'')  # No response
         mock_process.stderr.readline = AsyncMock(return_value=b'')  # No stderr output
         mock_subprocess.return_value = mock_process
-        
-        # Set short timeout
-        backend.config["timeout"] = 0.1
         
         await backend.start()
         
@@ -208,14 +219,16 @@ class TestStdioBackend:
             if var in os.environ:
                 del os.environ[var]
         
-        config = {
-            "command": ["echo", "test"],
-            "env": {
+        config = BackendMCPConfig(
+            name="test",
+            command="echo",
+            args=["test"],
+            env={
                 "TEST_VAR_1": "${TEST_VAR_1}",
                 "TEST_VAR_2": "${TEST_VAR_2}"
             },
-            "timeout": 30
-        }
+            timeout=30
+        )
         backend = StdioBackend("test", config)
         
         with pytest.raises(RuntimeError) as exc_info:
@@ -254,18 +267,20 @@ class TestBackendForwarder:
     def backend_configs(self):
         """Fixture for backend configurations"""
         return [
-            {
-                "name": "backend1",
-                "command": ["echo", "backend1"],
-                "description": "Backend 1",
-                "timeout": 30
-            },
-            {
-                "name": "backend2",
-                "command": ["echo", "backend2"],
-                "description": "Backend 2",
-                "timeout": 20
-            }
+            BackendMCPConfig(
+                name="backend1",
+                command="echo",
+                args=["backend1"],
+                description="Backend 1",
+                timeout=30
+            ),
+            BackendMCPConfig(
+                name="backend2",
+                command="echo",
+                args=["backend2"],
+                description="Backend 2",
+                timeout=20
+            )
         ]
     
     @pytest.fixture
@@ -364,7 +379,12 @@ class TestBackendForwarder:
         """Test health check for healthy backend"""
         # Mock backend
         mock_backend = AsyncMock()
-        mock_backend.config = {"command": ["echo", "test"]}
+        mock_backend.config = BackendMCPConfig(
+            name="backend1",
+            command="echo",
+            args=["test"],
+            description="Test backend"
+        )
         mock_backend.send_request = AsyncMock(
             return_value={
                 "jsonrpc": "2.0",

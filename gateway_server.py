@@ -33,19 +33,8 @@ async def setup_components(config_path: Path) -> tuple:
     config_manager = ConfigurationManager(str(config_path))
     config_manager.backends = config_manager.load()
     
-    # Convert backends to list format using list comprehension
-    backend_configs = [
-        {
-            "name": backend.name,
-            "command": backend.command,
-            "description": backend.description,
-            "timeout": backend.timeout,
-            "env": backend.env
-        }
-        for backend in config_manager.backends.values()
-    ]
-    
-    backend_forwarder = BackendForwarder(backend_configs)
+    # Pass backends directly as BackendMCPConfig objects
+    backend_forwarder = BackendForwarder(list(config_manager.backends.values()))
     protocol_handler = MCPProtocolHandler(config_manager, backend_forwarder)
     jsonrpc_handler = JSONRPCHandler(protocol_handler)
     

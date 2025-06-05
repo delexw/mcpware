@@ -34,19 +34,23 @@ async def main():
     """Run security validation demonstrations"""
     
     # Create test configuration with both public and sensitive backends
+    backends = [
+        {
+            "name": "github",
+            "command": "echo",
+            "args": ["github-test-server"],
+            "description": "GitHub MCP Server",
+        },
+        {
+            "name": "database",
+            "command": "echo",
+            "args": ["database-test-server"],
+            "description": "Database MCP Server",
+        },
+    ]
+    
     config = {
-        "backends": [
-            {
-                "name": "github-test",
-                "command": ["echo", "github-test-server"],
-                "description": "Test GitHub backend"
-            },
-            {
-                "name": "database-test",
-                "command": ["echo", "database-test-server"],
-                "description": "Test database backend"
-            }
-        ],
+        "backends": backends,
         "security_policy": {
             "backend_security_levels": {
                 "github-test": "public",

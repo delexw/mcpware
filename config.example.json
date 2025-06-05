@@ -2,8 +2,8 @@
   "backends": [
     {
       "name": "github",
-      "command": [
-        "docker",
+      "command": "docker",
+      "args": [
         "run",
         "-i",
         "--rm",
@@ -19,8 +19,8 @@
     },
     {
       "name": "time",
-      "command": [
-        "docker",
+      "command": "docker",
+      "args": [
         "run",
         "-i",
         "--rm",
@@ -31,8 +31,8 @@
     },
     {
       "name": "local-mysql",
-      "command": [
-        "docker",
+      "command": "docker",
+      "args": [
         "run",
         "-i",
         "--rm",
@@ -47,8 +47,8 @@
     },
     {
       "name": "web-scraper",
-      "command": [
-        "docker",
+      "command": "docker",
+      "args": [
         "run",
         "-i",
         "--rm",

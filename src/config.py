@@ -24,15 +24,15 @@ class SecurityPolicyError(ConfigurationError):
 class BackendMCPConfig:
     """Configuration for a backend MCP server"""
     name: str
-    command: Union[str, List[str]]
-    description: str
+    command: str
+    args: List[str] = field(default_factory=list)
+    description: str = "No description"
     timeout: int = 30
     env: Dict[str, str] = field(default_factory=dict)
     
-    def __post_init__(self):
-        # Ensure command is a list
-        if isinstance(self.command, str):
-            self.command = [self.command]
+    def get_full_command(self) -> List[str]:
+        """Get the full command as a list (command + args)"""
+        return [self.command] + self.args
 
 
 class ConfigurationManager:
@@ -107,6 +107,7 @@ class ConfigurationManager:
             backend_data['name']: BackendMCPConfig(
                 name=backend_data['name'],
                 command=backend_data['command'],
+                args=backend_data.get('args', []),
                 description=backend_data.get('description', 'No description'),
                 env=backend_data.get('env', {}),
                 timeout=backend_data.get('timeout', 30)

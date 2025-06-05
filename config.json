@@ -2,8 +2,8 @@
   "backends": [
     {
       "name": "github",
-      "command": [
-        "docker",
+      "command": "docker",
+      "args": [
         "run",
         "-i",
         "--rm",
@@ -16,14 +16,41 @@
       },
       "description": "GitHub MCP Server",
       "timeout": 60
+    },
+    {
+      "name": "time",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/time"
+      ]
+    },
+    {
+      "name": "dbhub-mysql-docker-marketplace-dev",
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "bytebase/dbhub",
+        "--transport",
+        "stdio",
+        "--dsn",
+        "mysql://root@host.docker.internal:3306/marketplace?sslmode=disable"
+      ],
+      "description": "DbHub MySQL Docker for Marketplace Dev"
     }
   ],
   "security_policy": {
     "backend_security_levels": {
-      "github": "public"
+      "github": "public",
+      "time": "internal",
+      "dbhub-mysql-docker-marketplace-dev": "sensitive"
     },
     "prevent_sensitive_to_public": true,
-    "prevent_sensitive_data_leak": true,
+    "prevent_sensitive_data_leak": false,
     "sql_injection_protection": true,
     "session_timeout_minutes": 30,
     "log_all_cross_backend_access": true,

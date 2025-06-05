@@ -2,8 +2,8 @@
   "backends": [
     {
       "name": "test_backend_1",
-      "command": [
-        "echo",
+      "command": "echo",
+      "args": [
         "backend1"
       ],
       "description": "Test backend 1 for unit tests",
@@ -14,7 +14,10 @@
     },
     {
       "name": "test_backend_2",
-      "command": "echo backend2",
+      "command": "echo",
+      "args": [
+        "backend2"
+      ],
       "description": "Test backend 2 with string command",
       "timeout": 5
     }

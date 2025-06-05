@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from .stdio_backend import StdioBackend
+from .config import BackendMCPConfig
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +48,8 @@ class BackendHealthResult:
 class BackendForwarder:
     """Manages forwarding requests to stdio-based backend MCP servers"""
     
-    def __init__(self, backends: List[Dict[str, Any]]):
-        self.backend_configs = {b["name"]: b for b in backends}
+    def __init__(self, backends: List[BackendMCPConfig]):
+        self.backend_configs = {b.name: b for b in backends}
         self.backends: Dict[str, StdioBackend] = {}
         
     async def initialize(self) -> None:
@@ -121,7 +122,7 @@ class BackendForwarder:
                 return BackendHealthResult(
                     name=backend_name,
                     status=BackendStatus.HEALTHY,
-                    command=backend.config.get("command"),
+                    command=backend.config.get_full_command(),
                     info=result.get("serverInfo", {})
                 ).to_dict()
             
