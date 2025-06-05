@@ -207,15 +207,29 @@ Edit `config.json` to configure backend MCP servers:
       "description": "Time MCP Server",
       "timeout": 30
     }
-  ]
+  ],
+  "security_policy": {
+    "backend_security_levels": {
+      "github": "public",
+      "local-mysql": "sensitive",
+      "production-db": "sensitive",
+      "internal-api": "internal"
+    },
+    "prevent_sensitive_to_public": true,
+    "prevent_sensitive_data_leak": true,
+    "sql_injection_protection": true,
+    "session_timeout_minutes": 30,
+    "log_all_cross_backend_access": true,
+    "block_after_suspicious_activity": true
+  }
 }
 ```
 
-**Note**: When running mcpware in Docker (as shown in this guide), only Docker-based backend servers are supported. The backend commands must start with `["docker", "run", ...]`. NPM-based backends (like `npx` commands) are only supported when running mcpware directly on the host machine.
+**Note**: 
+- When running mcpware in Docker (as shown in this guide), only Docker-based backend servers are supported. The backend commands must start with `["docker", "run", ...]`. NPM-based backends (like `npx` commands) are only supported when running mcpware directly on the host machine.
+- The `security_policy` section is mandatory and must include at least `backend_security_levels` mapping each backend to its security level.
 
-See `config.example.json` for a more comprehensive example with Docker-based backend servers:
-- GitHub MCP Server
-- Time MCP Server
+See `config.example.json` for a comprehensive example showing various backend types (public, internal, sensitive) with complete security policies.
 
 ### Example: Connecting to Host Services
 
@@ -265,7 +279,15 @@ Here's a comprehensive example showing how to configure backends that connect to
       "description": "Local Redis Instance",
       "timeout": 30
     }
-  ]
+  ],
+  "security_policy": {
+    "backend_security_levels": {
+      "github": "public",
+      "local-mysql": "sensitive",
+      "local-postgres": "sensitive",
+      "local-redis": "internal"
+    }
+  }
 }
 ```
 
@@ -456,6 +478,7 @@ docker run -it --rm \
 - `tests/test_backend.py` - Tests for backend process management and communication
 - `tests/test_protocol.py` - Tests for MCP protocol handling
 - `tests/test_gateway_server.py` - Integration tests for the complete system
+- `tests/test_security_validator.py` - Tests for security validation
 
 ### Coverage
 
@@ -522,6 +545,90 @@ The containerized deployment has these constraints:
 - **Network isolation**: Can't communicate with host processes via stdio
 
 For maximum flexibility (NPM backends, host tools), run mcpware directly on the host machine instead of in Docker.
+
+## Security Features
+
+mcpware includes built-in security validation to prevent cross-backend information leakage and protect against toxic agent flows (as described in the [Invariant Labs research](https://invariantlabs.ai/blog/mcp-github-vulnerability)).
+
+### Security Policies
+
+Security policies are mandatory in your `config.json`. At minimum, you must classify each backend:
+
+```json
+{
+  "backends": [...],
+  "security_policy": {
+    "backend_security_levels": {
+      "github": "public",
+      "local-mysql": "sensitive",
+      "production-db": "sensitive",
+      "internal-api": "internal"
+    },
+    "prevent_sensitive_to_public": true,
+    "prevent_sensitive_data_leak": true,
+    "sql_injection_protection": true,
+    "session_timeout_minutes": 30,
+    "log_all_cross_backend_access": true,
+    "block_after_suspicious_activity": true
+  }
+}
+```
+
+### Protection Features
+
+1. **Data Flow Control**: Prevents data from sensitive backends leaking to public backends
+2. **SQL Injection Protection**: Blocks suspicious SQL patterns that might exfiltrate data
+3. **Sensitive Data Detection**: Scans responses for passwords, API keys, SSNs, etc.
+4. **Taint Tracking**: Blocks all access after suspicious activity is detected
+
+### Backend Classification
+
+You must explicitly classify each backend in your `backend_security_levels`:
+- **Public**: External services like GitHub, GitLab, web scrapers
+- **Internal**: Internal services and tools that don't handle sensitive data
+- **Sensitive**: Any backend with sensitive data (databases, production systems, credential stores, payment systems, user data)
+
+If a backend is accessed without being classified in the security policy, the gateway will reject the request with an error message indicating that the backend needs to be added to `backend_security_levels`.
+
+### Security Monitoring
+
+Use the `security_status` tool to monitor session security:
+
+```
+Tool: security_status
+Response: 
+🔒 Security Status Report
+========================================
+
+Session ID: abc-123-def
+Started: 2024-01-15T10:30:00
+Duration: 125.3 seconds
+Tainted: No
+
+Accessed Backends: github, local-mysql
+Total Accesses: 4
+Sensitive Data Accesses: 0
+
+📊 Recent Access History:
+  • github (public) - list_issues
+  • local-mysql (sensitive) - run_query
+  • github (public) - create_comment ⚠️ [blocked]
+```
+
+### Example Attack Prevention
+
+Here's how mcpware prevents the attack described in the Invariant Labs research:
+
+1. **Attacker creates malicious GitHub issue** with prompt injection
+2. **User asks**: "Review my GitHub issues"
+3. **mcpware allows**: Access to GitHub backend (public)
+4. **Agent reads malicious issue** and attempts to query database
+5. **If database returns sensitive data**, response validation blocks sensitive data patterns
+6. **mcpware blocks**: Cannot return to GitHub after accessing sensitive data
+
+### Custom Security Policies
+
+See `config.example.json` for a complete example with various backend types and security policies suitable for different environments. You can adjust the security settings based on your specific requirements.
 
 ## License
 

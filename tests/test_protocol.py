@@ -18,16 +18,29 @@ class TestMCPProtocolHandler:
         """Fixture for mock ConfigurationManager"""
         config_manager = Mock(spec=ConfigurationManager)
         config_manager.backends = {
-            "backend1": BackendMCPConfig(
+            "backend1": Mock(
                 name="backend1",
                 command=["echo", "test"],
-                description="Test backend 1"
+                description="Backend 1",
+                timeout=30,
+                env={}
             ),
-            "backend2": BackendMCPConfig(
+            "backend2": Mock(
                 name="backend2",
                 command=["echo", "test2"],
-                description="Test backend 2"
+                description="Backend 2",
+                timeout=30,
+                env={}
             )
+        }
+        # Add required config attribute with security_policy
+        config_manager.config = {
+            "security_policy": {
+                "backend_security_levels": {
+                    "backend1": "public",
+                    "backend2": "internal"
+                }
+            }
         }
         return config_manager
     
@@ -104,7 +117,7 @@ class TestMCPProtocolHandler:
         
         assert "tools" in result
         tools = result["tools"]
-        assert len(tools) == 2
+        assert len(tools) == 3  # use_tool, discover_backend_tools, security_status
         
         # Check use_tool
         use_tool = next(t for t in tools if t["name"] == "use_tool")
@@ -115,6 +128,10 @@ class TestMCPProtocolHandler:
         # Check discover_backend_tools
         discover_tool = next(t for t in tools if t["name"] == "discover_backend_tools")
         assert "backend_server" in discover_tool["inputSchema"]["properties"]
+        
+        # Check security_status
+        security_tool = next(t for t in tools if t["name"] == "security_status")
+        assert security_tool["description"] == "Get current session security status and access history"
     
     @pytest.mark.asyncio
     async def test_handle_tool_call_use_tool(self, protocol_handler, mock_backend_forwarder):

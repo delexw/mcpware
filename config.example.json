@@ -14,7 +14,7 @@
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
-      "description": "GitHub MCP Server",
+      "description": "GitHub MCP Server (Public Source)",
       "timeout": 30
     },
     {
@@ -26,8 +26,51 @@
         "--rm",
         "mcp/time"
       ],
-      "description": "Time MCP Server",
+      "description": "Time MCP Server (Internal Service)",
+      "timeout": 30
+    },
+    {
+      "name": "local-mysql",
+      "command": [
+        "docker",
+        "run",
+        "-i",
+        "--rm",
+        "bytebase/dbhub",
+        "--transport",
+        "stdio",
+        "--dsn",
+        "mysql://root:password@host.docker.internal:3306/myapp?sslmode=disable"
+      ],
+      "description": "Local MySQL Database (Sensitive)",
+      "timeout": 30
+    },
+    {
+      "name": "web-scraper",
+      "command": [
+        "docker",
+        "run",
+        "-i",
+        "--rm",
+        "mcp/web-scraper"
+      ],
+      "description": "Web Scraper (Public Source)",
       "timeout": 30
     }
-  ]
+  ],
+  "security_policy": {
+    "backend_security_levels": {
+      "github": "public",
+      "web-scraper": "public",
+      "time": "internal",
+      "local-mysql": "sensitive",
+      "production-db": "sensitive"
+    },
+    "prevent_sensitive_to_public": true,
+    "prevent_sensitive_data_leak": true,
+    "sql_injection_protection": true,
+    "session_timeout_minutes": 30,
+    "log_all_cross_backend_access": true,
+    "block_after_suspicious_activity": true
+  }
 }
