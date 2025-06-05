@@ -15,45 +15,23 @@
 
 A Model Context Protocol (MCP) gateway server that routes tool calls to multiple stdio-based MCP backend servers.
 
-## Overview
+## 🎯 Key Features
 
-mcpware acts as a gateway/router for MCP, allowing AI agents to access multiple MCP servers through a single connection. It provides:
+### 🚀 Bypass Tool Limits
+- **Problem**: Cursor has a 40-80 tool limit per MCP server
+- **Solution**: mcpware exposes only 2 routing tools while providing access to unlimited backend tools
+- **Result**: Connect to GitHub (50+ tools), databases, and more through a single gateway!
 
-- **Single entry point**: Connect to multiple MCP servers through one gateway
-- **Tool routing**: Routes tool calls to appropriate backend servers
-- **Backend discovery**: Discover available backends and their tools
-- **Process management**: Automatically launches and manages backend MCP server processes
+### 🔒 Built-in Security
+- **Prevents cross-backend data leakage** (e.g., database → GitHub)
+- **Blocks SQL injection and sensitive data exposure**
+- **Taint tracking** stops all access after suspicious activity
+- **Mandatory security classification** for each backend (public/internal/sensitive)
 
-**How it works**: mcpware runs inside a Docker container and launches other MCP servers as Docker containers. When you request a tool from a backend, mcpware:
-1. Starts the backend's Docker container (if not already running)
-2. Communicates with it via stdio (standard input/output)
-3. Routes your request to the appropriate backend
-4. Returns the response back to Claude
-
-The Docker socket mount (`/var/run/docker.sock`) gives mcpware access to the host's Docker daemon, allowing it to create and manage backend containers.
-
-**Important limitation**: When running mcpware in Docker (as shown in this guide), backend MCP servers MUST be Docker containers. NPM-based backends (like `npx @modelcontextprotocol/server-memory`) are NOT supported because:
-- mcpware's container doesn't have Node.js installed
-- File paths would be isolated to the container
-- Process communication across the container boundary doesn't work for non-Docker processes
-
-To use NPM-based backends, you would need to run mcpware directly on your host machine (not covered in this guide).
-
-## 🚀 Key Advantage: Bypassing Tool Limits
-
-**mcpware elegantly bypasses Cursor's MCP tool limits (40-80 tools) through its gateway architecture:**
-
-- **The Challenge**: Cursor's MCP client has a limit of 40-80 tools that can be loaded at once
-- **The Solution**: mcpware only exposes 2 main tools (`use_tool` and `discover_backend_tools`) to Cursor
-- **The Result**: Access hundreds of tools across multiple backend servers without hitting any limits!
-
-Here's how it works:
-- mcpware's manifest only declares a few top-level routing tools
-- These tools dynamically fetch and route requests to backend servers (like GitHub with 50+ tools)
-- The actual backend tools are never loaded into Cursor's context all at once
-- You stay well within MCP protocol constraints while accessing unlimited backend tools
-
-This means you can connect to dozens of backend servers, each with dozens of tools, all through a single mcpware connection! 🎯
+### 🔧 Additional Benefits
+- **Single entry point** for multiple MCP servers
+- **Automatic process management** for backend servers
+- **Docker-based** isolation and deployment
 
 ## Quick Start
 
@@ -71,6 +49,15 @@ docker build -t mcpware .
 ```
 
 Then configure Claude Desktop as shown in the [Installation](#installation) section.
+
+## How it Works
+
+mcpware runs as a Docker container that:
+1. Receives requests from Claude Desktop via stdio
+2. Routes them to the appropriate backend MCP server (also running in Docker)
+3. Returns responses back to Claude
+
+**Important**: Backend servers must be Docker containers when running mcpware in Docker. NPM-based backends require running mcpware on the host.
 
 ## Installation
 
@@ -203,7 +190,7 @@ docker version --format '{{.Server.Os}}'
 
 ## Configuration
 
-Edit `config.json` to configure backend MCP servers:
+Create a `config.json` with your backend servers:
 
 ```json
 {
@@ -216,109 +203,21 @@ Edit `config.json` to configure backend MCP servers:
       },
       "description": "GitHub MCP Server",
       "timeout": 30
-    },
-    {
-      "name": "time",
-      "command": ["docker", "run", "-i", "--rm", "mcp/time"],
-      "description": "Time MCP Server",
-      "timeout": 30
     }
   ],
   "security_policy": {
     "backend_security_levels": {
-      "github": "public",
-      "local-mysql": "sensitive",
-      "production-db": "sensitive",
-      "internal-api": "internal"
-    },
-    "prevent_sensitive_to_public": true,
-    "prevent_sensitive_data_leak": true,
-    "sql_injection_protection": true,
-    "session_timeout_minutes": 30,
-    "log_all_cross_backend_access": true,
-    "block_after_suspicious_activity": true
-  }
-}
-```
-
-**Note**: 
-- When running mcpware in Docker (as shown in this guide), only Docker-based backend servers are supported. The backend commands must start with `["docker", "run", ...]`. NPM-based backends (like `npx` commands) are only supported when running mcpware directly on the host machine.
-- The `security_policy` section is mandatory and must include at least `backend_security_levels` mapping each backend to its security level.
-
-See `config.example.json` for a comprehensive example showing various backend types (public, internal, sensitive) with complete security policies.
-
-### Example: Connecting to Host Services
-
-Here's a comprehensive example showing how to configure backends that connect to services running on your host machine:
-
-```json
-{
-  "backends": [
-    {
-      "name": "github",
-      "command": ["docker", "run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-      },
-      "description": "GitHub MCP Server",
-      "timeout": 30
-    },
-    {
-      "name": "local-mysql",
-      "command": [
-        "docker", "run", "-i", "--rm",
-        "bytebase/dbhub",
-        "--transport", "stdio",
-        "--dsn", "mysql://root:password@host.docker.internal:3306/myapp?sslmode=disable"
-      ],
-      "description": "Local MySQL Database",
-      "timeout": 30
-    },
-    {
-      "name": "local-postgres", 
-      "command": [
-        "docker", "run", "-i", "--rm",
-        "dbhub/postgres",
-        "--dsn", "postgres://user:pass@host.docker.internal:5432/mydb"
-      ],
-      "description": "Local PostgreSQL Database",
-      "timeout": 30
-    },
-    {
-      "name": "local-redis",
-      "command": [
-        "docker", "run", "-i", "--rm",
-        "mcp/redis",
-        "--host", "host.docker.internal",
-        "--port", "6379"
-      ],
-      "description": "Local Redis Instance",
-      "timeout": 30
-    }
-  ],
-  "security_policy": {
-    "backend_security_levels": {
-      "github": "public",
-      "local-mysql": "sensitive",
-      "local-postgres": "sensitive",
-      "local-redis": "internal"
+      "github": "public"
     }
   }
 }
 ```
 
-In this configuration:
-- `host.docker.internal` resolves to your host machine's IP address
-- Backend containers can connect to any service listening on host ports
-- This works because backends are sibling containers, not nested children
+**Required**:
+- `security_policy` with `backend_security_levels` classifying each backend as `public`, `internal`, or `sensitive`
+- Backend commands must start with `["docker", "run", ...]` when using Docker
 
-### Backend Configuration Options
-
-- `name`: Unique identifier for the backend
-- `command`: Command and arguments to launch the backend server
-- `env`: Environment variables to pass to the backend (supports `${VAR}` substitution)
-- `description`: Human-readable description
-- `timeout`: Request timeout in seconds
+See `config.example.json` for more backend examples (databases, APIs, etc.).
 
 ## Usage
 
@@ -469,182 +368,28 @@ The project includes comprehensive unit and integration tests.
    pytest-watch
    ```
 
-### Verification Scripts
+## Security Details
 
-The project includes scripts to verify the gateway functionality:
+mcpware prevents cross-backend information leakage through multiple layers:
 
-```bash
-# Test basic MCP functionality
-python scripts/test_mcpware.py
+### Attack Prevention Example
+1. **Attacker** creates malicious GitHub issue with prompt injection
+2. **User** asks: "Review my GitHub issues"  
+3. **Agent** reads malicious issue and tries to query database
+4. **mcpware blocks**: Cannot send database data back to GitHub (public backend)
 
-# Verify backend tools discovery
-python scripts/verify_backend_tools.py
-
-# Test with Docker
-docker run -it --rm \
-  -v $(pwd)/config.json:/app/config.json:ro \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e GITHUB_PERSONAL_ACCESS_TOKEN \
-  mcpware < scripts/test_commands.txt
-```
-
-### Test Structure
-
-- `tests/test_config.py` - Tests for configuration management
-- `tests/test_backend.py` - Tests for backend process management and communication
-- `tests/test_protocol.py` - Tests for MCP protocol handling
-- `tests/test_gateway_server.py` - Integration tests for the complete system
-- `tests/test_security_validator.py` - Tests for security validation
-
-### Coverage
-
-The test suite aims for at least 80% code coverage. Coverage reports are generated in:
-- Terminal output (with missing lines)
-- `htmlcov/` directory (HTML report)
-- `coverage.xml` (XML report for CI)
-
-### Continuous Integration
-
-Tests run automatically on GitHub Actions for:
-- Multiple Python versions (3.8 - 3.12)
-- Multiple operating systems (Ubuntu, Windows, macOS)
-- Code linting with flake8 and black
+### Security Tools
+- Use `security_status` tool to monitor session security
+- Configure policies in `config.json` (see `config.example.json` for full options)
+- Automatic taint tracking after suspicious activity
 
 ## Architecture
 
-The gateway:
-1. Receives MCP requests via stdio from Claude Desktop
-2. Identifies which backend should handle the request
-3. Launches the backend's Docker container (if needed)
-4. Forwards the request to the backend via stdio
-5. Returns the backend's response to Claude Desktop
-
-### Container Architecture
-
-When running in Docker, mcpware uses a "Docker-out-of-Docker" approach:
-- mcpware runs in its own container
-- It accesses the host's Docker daemon through the mounted socket
-- Backend containers are created as siblings (not children) on the host
-- Communication happens through stdio pipes between containers
-
-This is different from true "Docker-in-Docker" and is more secure and efficient.
-
-#### Accessing Host Services from Backend Containers
-
-Because backend containers are created as siblings (not children) of the mcpware container, they can access services running on the host machine using `host.docker.internal`. This is particularly useful for:
-
-- **Local databases**: Connect to MySQL, PostgreSQL, Redis, etc. running on your host
-- **Development services**: Access local API servers, mock services, or other tools
-- **Shared resources**: Connect to any service listening on host ports
-
-**Example**: A database backend configuration connecting to host MySQL:
-```json
-{
-  "name": "local-mysql",
-  "command": [
-    "docker", "run", "-i", "--rm",
-    "dbhub/mysql-mcp-server",
-    "--dsn", "mysql://user:pass@host.docker.internal:3306/mydb"
-  ],
-  "description": "Local MySQL Database"
-}
-```
-
-This architecture means backend containers have the same networking capabilities as any container started directly with `docker run`, making it easy to integrate with your local development environment.
-
-### Limitations of Container-Based Deployment
-
-The containerized deployment has these constraints:
-- **Only Docker backends**: Backend commands must start with `["docker", "run", ...]`
-- **No NPM/host tools**: The mcpware container lacks Node.js, Python, etc.
-- **Isolated filesystem**: Container can't access host files directly
-- **Network isolation**: Can't communicate with host processes via stdio
-
-For maximum flexibility (NPM backends, host tools), run mcpware directly on the host machine instead of in Docker.
-
-## Security Features
-
-mcpware includes built-in security validation to prevent cross-backend information leakage and protect against toxic agent flows (as described in the [Invariant Labs research](https://invariantlabs.ai/blog/mcp-github-vulnerability)).
-
-### Security Policies
-
-Security policies are mandatory in your `config.json`. At minimum, you must classify each backend:
-
-```json
-{
-  "backends": [...],
-  "security_policy": {
-    "backend_security_levels": {
-      "github": "public",
-      "local-mysql": "sensitive",
-      "production-db": "sensitive",
-      "internal-api": "internal"
-    },
-    "prevent_sensitive_to_public": true,
-    "prevent_sensitive_data_leak": true,
-    "sql_injection_protection": true,
-    "session_timeout_minutes": 30,
-    "log_all_cross_backend_access": true,
-    "block_after_suspicious_activity": true
-  }
-}
-```
-
-### Protection Features
-
-1. **Data Flow Control**: Prevents data from sensitive backends leaking to public backends
-2. **SQL Injection Protection**: Blocks suspicious SQL patterns that might exfiltrate data
-3. **Sensitive Data Detection**: Scans responses for passwords, API keys, SSNs, etc.
-4. **Taint Tracking**: Blocks all access after suspicious activity is detected
-
-### Backend Classification
-
-You must explicitly classify each backend in your `backend_security_levels`:
-- **Public**: External services like GitHub, GitLab, web scrapers
-- **Internal**: Internal services and tools that don't handle sensitive data
-- **Sensitive**: Any backend with sensitive data (databases, production systems, credential stores, payment systems, user data)
-
-If a backend is accessed without being classified in the security policy, the gateway will reject the request with an error message indicating that the backend needs to be added to `backend_security_levels`.
-
-### Security Monitoring
-
-Use the `security_status` tool to monitor session security:
-
-```
-Tool: security_status
-Response: 
-🔒 Security Status Report
-========================================
-
-Session ID: abc-123-def
-Started: 2024-01-15T10:30:00
-Duration: 125.3 seconds
-Tainted: No
-
-Accessed Backends: github, local-mysql
-Total Accesses: 4
-Sensitive Data Accesses: 0
-
-📊 Recent Access History:
-  • github (public) - list_issues
-  • local-mysql (sensitive) - run_query
-  • github (public) - create_comment ⚠️ [blocked]
-```
-
-### Example Attack Prevention
-
-Here's how mcpware prevents the attack described in the Invariant Labs research:
-
-1. **Attacker creates malicious GitHub issue** with prompt injection
-2. **User asks**: "Review my GitHub issues"
-3. **mcpware allows**: Access to GitHub backend (public)
-4. **Agent reads malicious issue** and attempts to query database
-5. **If database returns sensitive data**, response validation blocks sensitive data patterns
-6. **mcpware blocks**: Cannot return to GitHub after accessing sensitive data
-
-### Custom Security Policies
-
-See `config.example.json` for a complete example with various backend types and security policies suitable for different environments. You can adjust the security settings based on your specific requirements.
+mcpware uses a "Docker-out-of-Docker" approach:
+- Runs as a container with access to host Docker daemon
+- Launches backend containers as siblings (not children)
+- Backends can access host services via `host.docker.internal`
+- Communication via stdio pipes between containers
 
 ## License
 
