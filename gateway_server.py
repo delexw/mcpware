@@ -4,11 +4,12 @@ Gateway MCP Server
 Routes tool calls to multiple stdio-based MCP backend servers
 """
 import argparse
+import asyncio
+import json
 import logging
 import sys
-import json
-import asyncio
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -18,7 +19,83 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main():
+async def setup_components(config_path: Path) -> tuple:
+    """Initialize and setup all components.
+    
+    Returns:
+        Tuple of (config_manager, backend_forwarder, protocol_handler, jsonrpc_handler)
+    """
+    from src.backend import BackendForwarder
+    from src.config import ConfigurationManager
+    from src.protocol import JSONRPCHandler, MCPProtocolHandler
+    
+    # Initialize components
+    config_manager = ConfigurationManager(str(config_path))
+    config_manager.backends = config_manager.load()
+    
+    # Convert backends to list format using list comprehension
+    backend_configs = [
+        {
+            "name": backend.name,
+            "command": backend.command,
+            "description": backend.description,
+            "timeout": backend.timeout,
+            "env": backend.env
+        }
+        for backend in config_manager.backends.values()
+    ]
+    
+    backend_forwarder = BackendForwarder(backend_configs)
+    protocol_handler = MCPProtocolHandler(config_manager, backend_forwarder)
+    jsonrpc_handler = JSONRPCHandler(protocol_handler)
+    
+    return config_manager, backend_forwarder, protocol_handler, jsonrpc_handler
+
+
+async def process_request(
+    line: str,
+    jsonrpc_handler: 'JSONRPCHandler',
+    backend_forwarder: 'BackendForwarder',
+    backends_initialized: bool
+) -> tuple[Optional[Dict[str, Any]], bool]:
+    """Process a single request line.
+    
+    Returns:
+        Tuple of (response, backends_initialized)
+    """
+    try:
+        data = json.loads(line)
+        
+        # Initialize backends on first valid request using walrus operator
+        if not backends_initialized and (method := data.get("method")):
+            logger.info(f"Initializing backends on first request: {method}")
+            await backend_forwarder.initialize()
+            backends_initialized = True
+        
+        response = await jsonrpc_handler.handle_request(data)
+        
+        # Only return response if the original request had an id (not a notification)
+        if "id" in data and response is not None:
+            return response, backends_initialized
+            
+    except json.JSONDecodeError:
+        # For parse errors, check if it looks like a JSON-RPC request
+        if line.startswith('{') and any(key in line for key in ('jsonrpc', 'method')):
+            return {
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {
+                    "code": -32700,
+                    "message": "Parse error"
+                }
+            }, backends_initialized
+        else:
+            logger.warning(f"Ignoring non-JSON input: {line[:50]}...")
+    
+    return None, backends_initialized
+
+
+async def main() -> None:
     """Main entry point for stdio mode"""
     logger.info("Gateway MCP Server starting in stdio mode")
     
@@ -26,7 +103,8 @@ async def main():
     parser = argparse.ArgumentParser(description="Gateway MCP Server")
     parser.add_argument(
         "--config",
-        default="config.json",
+        type=Path,
+        default=Path("config.json"),
         help="Configuration file path (default: config.json)"
     )
     parser.add_argument(
@@ -41,78 +119,27 @@ async def main():
     # Set logging level
     logging.getLogger().setLevel(getattr(logging, args.log_level))
     
-    # Import components
-    from src.protocol import JSONRPCHandler, MCPProtocolHandler
-    from src.config import ConfigurationManager
-    from src.backend import BackendForwarder
-    
-    # Initialize components
-    config_manager = ConfigurationManager(args.config)
-    config_manager.backends = config_manager.load()
-    
-    # Convert backends to dictionary format for BackendForwarder
-    backend_configs = []
-    for backend in config_manager.backends.values():
-        config = {
-            "name": backend.name,
-            "command": backend.command,
-            "description": backend.description,
-            "timeout": backend.timeout,
-            "env": backend.env
-        }
-        backend_configs.append(config)
-    
-    backend_forwarder = BackendForwarder(backend_configs)
-    # Don't initialize backends yet - wait until we're ready to handle messages
-    
-    protocol_handler = MCPProtocolHandler(config_manager, backend_forwarder)
-    jsonrpc_handler = JSONRPCHandler(protocol_handler)
+    # Setup components
+    config_manager, backend_forwarder, protocol_handler, jsonrpc_handler = await setup_components(args.config)
     
     # Flag to track if backends are initialized
     backends_initialized = False
     
     try:
         # Read from stdin and write to stdout
-        while True:
-            line = await asyncio.get_event_loop().run_in_executor(None, sys.stdin.readline)
-            if not line:
-                break
-                
+        loop = asyncio.get_event_loop()
+        while line := await loop.run_in_executor(None, sys.stdin.readline):
             line = line.strip()
             if not line:
                 continue
-                
-            try:
-                data = json.loads(line)
-                
-                # Initialize backends on first valid request
-                if not backends_initialized:
-                    logger.info("Initializing backends on first request")
-                    await backend_forwarder.initialize()
-                    backends_initialized = True
-                
-                response = await jsonrpc_handler.handle_request(data)
-                
-                # Only send response if the original request had an id (not a notification)
-                if "id" in data and response is not None:
-                    print(json.dumps(response))
-                    sys.stdout.flush()
-            except json.JSONDecodeError:
-                # For parse errors, we should only send a response if it looks like
-                # the client was trying to send a JSON-RPC request
-                if line.startswith('{') and ('jsonrpc' in line or 'method' in line):
-                    error_response = {
-                        "jsonrpc": "2.0",
-                        "id": None,
-                        "error": {
-                            "code": -32700,
-                            "message": "Parse error"
-                        }
-                    }
-                    print(json.dumps(error_response))
-                    sys.stdout.flush()
-                else:
-                    logger.warning(f"Ignoring non-JSON input: {line[:50]}...")
+            
+            response, backends_initialized = await process_request(
+                line, jsonrpc_handler, backend_forwarder, backends_initialized
+            )
+            
+            if response:
+                print(json.dumps(response))
+                sys.stdout.flush()
                 
     except KeyboardInterrupt:
         logger.info("Shutting down...")

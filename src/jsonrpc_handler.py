@@ -3,7 +3,7 @@ JSONRPCHandler module for Gateway MCP Server
 Handles JSON-RPC protocol wrapping for MCP messages
 """
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Callable, Dict, Optional
 
 from .mcp_protocol_handler import MCPProtocolHandler
 
@@ -15,69 +15,77 @@ class JSONRPCHandler:
     
     def __init__(self, protocol_handler: MCPProtocolHandler):
         self.protocol_handler = protocol_handler
+        self._method_handlers = self._setup_method_handlers()
         
-    async def handle_request(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _setup_method_handlers(self) -> Dict[str, Callable]:
+        """Setup mapping of methods to handlers"""
+        return {
+            "initialize": self.protocol_handler.handle_initialize,
+            "tools/list": self.protocol_handler.handle_list_tools,
+            "tools/call": self.protocol_handler.handle_tool_call,
+            "resources/list": lambda _: self.protocol_handler.handle_list_resources(),
+            "resources/read": self.protocol_handler.handle_read_resource,
+            "prompts/list": lambda _: self.protocol_handler.handle_list_prompts(),
+            "prompts/get": self.protocol_handler.handle_get_prompt,
+        }
+        
+    async def handle_request(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Handle incoming JSON-RPC request"""
         method = data.get("method", "")
         params = data.get("params", {})
         
-        # Check if this is a notification (no id field at all)
-        # Note: id: null is still a request, not a notification
+        # Check if this is a notification (no id field)
         if "id" not in data:
-            # This is a notification - no response should be sent
-            logger.debug(f"Received notification: {method}")
-            
-            # Handle known notifications
-            if method == "notifications/cancelled":
-                # Log the cancellation but don't do anything else
-                logger.debug(f"Received cancellation notification: {params}")
-            # Add other notification handlers here as needed
-            
+            await self._handle_notification(method, params)
             return None
         
-        # This is a request (has id field, even if null)
+        # This is a request (has id field)
         request_id = data.get("id")
         
         try:
-            # Route based on method
-            if method == "initialize":
-                response = await self.protocol_handler.handle_initialize(params)
-            elif method == "tools/list":
-                response = await self.protocol_handler.handle_list_tools(params)
-            elif method == "tools/call":
-                response = await self.protocol_handler.handle_tool_call(params)
-            elif method == "resources/list":
-                response = await self.protocol_handler.handle_list_resources()
-            elif method == "resources/read":
-                response = await self.protocol_handler.handle_read_resource(params)
-            elif method == "prompts/list":
-                response = await self.protocol_handler.handle_list_prompts()
-            elif method == "prompts/get":
-                response = await self.protocol_handler.handle_get_prompt(params)
-            elif method == "notifications/cancelled":
-                # This shouldn't happen since we handle it above, but just in case
+            # Use method handler dispatch
+            if handler := self._method_handlers.get(method):
+                # Handle methods that don't take params
+                if method in ("resources/list", "prompts/list"):
+                    response = await handler(params)
+                else:
+                    response = await handler(params)
+                
+                return self._create_success_response(request_id, response)
+            
+            # Check for notification methods that shouldn't have an id
+            if method == "notifications/cancelled":
                 return self._create_error_response(
                     request_id,
                     -32601,
                     f"Method {method} is a notification and should not have an id"
                 )
-            else:
-                return self._create_error_response(
-                    request_id,
-                    -32601,
-                    f"Method not found: {method}"
-                )
             
-            return self._create_success_response(request_id, response)
+            # Method not found
+            return self._create_error_response(
+                request_id,
+                -32601,
+                f"Method not found: {method}"
+            )
             
         except Exception as e:
-            logger.error(f"Error handling request: {e}")
+            logger.error(f"Error handling request: {e}", exc_info=True)
             return self._create_error_response(
                 request_id,
                 -32603,
                 "Internal error",
                 str(e)
             )
+    
+    async def _handle_notification(self, method: str, params: Dict[str, Any]) -> None:
+        """Handle notifications (requests without id)"""
+        logger.debug(f"Received notification: {method}")
+        
+        match method:
+            case "notifications/cancelled":
+                logger.debug(f"Received cancellation notification: {params}")
+            case _:
+                logger.debug(f"Unhandled notification: {method}")
     
     def _create_success_response(self, request_id: Any, result: Any) -> Dict[str, Any]:
         """Create a successful JSON-RPC response"""
@@ -95,7 +103,7 @@ class JSONRPCHandler:
         data: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create an error JSON-RPC response"""
-        error = {
+        error: Dict[str, Any] = {
             "code": code,
             "message": message
         }

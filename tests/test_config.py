@@ -7,7 +7,7 @@ import tempfile
 import os
 from pathlib import Path
 
-from src.config import BackendMCPConfig, ConfigurationManager
+from src.config import BackendMCPConfig, ConfigurationManager, ConfigurationError
 
 
 class TestBackendMCPConfig:
@@ -69,7 +69,7 @@ class TestConfigurationManager:
         """Test ConfigurationManager initialization"""
         config_manager = ConfigurationManager("test_config.json")
         
-        assert config_manager.config_file == "test_config.json"
+        assert config_manager.config_file == Path("test_config.json")
         assert config_manager.backends == {}
     
     def test_load_valid_config(self):
@@ -166,8 +166,10 @@ class TestConfigurationManager:
         try:
             config_manager = ConfigurationManager(temp_file)
             
-            with pytest.raises(json.JSONDecodeError):
+            with pytest.raises(ConfigurationError) as exc_info:
                 config_manager.load()
+                
+            assert "Invalid JSON" in str(exc_info.value)
                 
         finally:
             os.unlink(temp_file)
@@ -194,8 +196,10 @@ class TestConfigurationManager:
         try:
             config_manager = ConfigurationManager(temp_file)
             
-            with pytest.raises(KeyError):
+            with pytest.raises(ConfigurationError) as exc_info:
                 config_manager.load()
+                
+            assert "name" in str(exc_info.value)
                 
         finally:
             os.unlink(temp_file)
