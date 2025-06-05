@@ -61,7 +61,7 @@ class ConfigurationManager:
             self._validate_security_policy(config_data)
             
             # Extract and validate backends
-            backends_data = config_data.get('backends', [])
+            backends_data = config_data.get('backends', {})
             backends = self._create_backends(backends_data, config_data)
             
             self.backends = backends
@@ -89,10 +89,10 @@ class ConfigurationManager:
         if 'backend_security_levels' not in security_policy:
             raise SecurityPolicyError("Missing required 'backend_security_levels' in security_policy")
     
-    def _create_backends(self, backends_data: List[Dict], config_data: Dict) -> Dict[str, BackendMCPConfig]:
+    def _create_backends(self, backends_data: Dict[str, Dict], config_data: Dict) -> Dict[str, BackendMCPConfig]:
         """Create backend configurations and validate security levels"""
         # Get backend names and security levels using set comprehensions
-        backend_names = {backend['name'] for backend in backends_data}
+        backend_names = set(backends_data.keys())
         classified_backends = set(config_data['security_policy']['backend_security_levels'].keys())
         
         # Check for unclassified backends
@@ -104,13 +104,13 @@ class ConfigurationManager:
         
         # Create backend configurations using dictionary comprehension
         return {
-            backend_data['name']: BackendMCPConfig(
-                name=backend_data['name'],
+            name: BackendMCPConfig(
+                name=name,
                 command=backend_data['command'],
                 args=backend_data.get('args', []),
                 description=backend_data.get('description', 'No description'),
                 env=backend_data.get('env', {}),
                 timeout=backend_data.get('timeout', 30)
             )
-            for backend_data in backends_data
+            for name, backend_data in backends_data.items()
         } 

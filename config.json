@@ -1,7 +1,6 @@
 {
-  "backends": [
-    {
-      "name": "github",
+  "backends": {
+    "github": {
       "command": "docker",
       "args": [
         "run",
@@ -17,8 +16,7 @@
       "description": "GitHub MCP Server",
       "timeout": 60
     },
-    {
-      "name": "time",
+    "time": {
       "command": "docker",
       "args": [
         "run",
@@ -28,8 +26,7 @@
       ],
       "timeout": 60
     },
-    {
-      "name": "dbhub-mysql-docker-marketplace-dev",
+    "dbhub-mysql-docker-marketplace-dev": {
       "command": "docker",
       "args": [
         "run",
@@ -43,7 +40,7 @@
       ],
       "description": "DbHub MySQL Docker for Marketplace Dev"
     }
-  ],
+  },
   "security_policy": {
     "backend_security_levels": {
       "github": "public",
