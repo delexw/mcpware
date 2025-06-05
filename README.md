@@ -44,17 +44,15 @@ cd mcpware
 # Build the Docker image
 docker build -t mcpware .
 
-# Configure Claude Desktop (see Installation section)
-# Add the configuration to claude_desktop_config.json
-# Restart Claude Desktop after configuration
+# Configure MCP client (see Installation section)
 ```
 
-Then configure Claude Desktop as shown in the [Installation](#installation) section.
+Then configure MCP Clients as shown in the [Installation](#installation) section.
 
 ## How it Works
 
 mcpware runs as a Docker container that:
-1. Receives requests from Claude Desktop via stdio
+1. Receives requests from MCP clients via stdio
 2. Routes them to the appropriate backend MCP server (also running in Docker)
 3. Returns responses back to Claude
 
@@ -64,9 +62,9 @@ mcpware runs as a Docker container that:
 
 ### Prerequisites
 - Docker
-- Claude Desktop app
+- MCP Clients (Cursor etc..)
 
-### Setup with Claude Desktop
+### Setup with MCP Client
 
 1. Clone this repository:
    ```bash
@@ -78,16 +76,11 @@ mcpware runs as a Docker container that:
 
 3. Set up your environment variables:
    ```bash
-   # Create a .env file with your tokens
+   # Create a .env file with your tokens, eg. Github
    echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
    ```
 
-4. Add to Claude Desktop configuration:
-   
-   **Config file locations:**
-   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-   - Linux: `~/.config/Claude/claude_desktop_config.json`
+4. Add to MCP client configuration:
 
    **Configuration (Direct Docker Run):**
    ```json
@@ -117,15 +110,13 @@ mcpware runs as a Docker container that:
 
    **Important**: 
    - Replace `/path/to/mcpware` with the absolute path to your cloned repository
-   - Replace `your_github_token_here` with your actual GitHub Personal Access Token
+   - If you configure Github MCP server in config.json, Replace `your_github_token_here` with your actual GitHub Personal Access Token 
    - The Docker socket mount (`/var/run/docker.sock`) is required for mcpware to launch Docker-based backends
    
    **Why mount the Docker socket?**
    - mcpware needs to launch Docker containers for backend MCP servers (like `ghcr.io/github/github-mcp-server`)
    - The Docker socket mount allows mcpware to communicate with Docker
    - Without this mount, mcpware cannot start backend servers that run as Docker containers
-
-6. Restart Claude Desktop to load the new configuration
 
 ### Platform-Specific Docker Socket Configuration
 
