@@ -39,6 +39,22 @@ The Docker socket mount (`/var/run/docker.sock`) gives mcpware access to the hos
 
 To use NPM-based backends, you would need to run mcpware directly on your host machine (not covered in this guide).
 
+## 🚀 Key Advantage: Bypassing Tool Limits
+
+**mcpware elegantly bypasses Cursor's MCP tool limits (40-80 tools) through its gateway architecture:**
+
+- **The Challenge**: Cursor's MCP client has a limit of 40-80 tools that can be loaded at once
+- **The Solution**: mcpware only exposes 2 main tools (`use_tool` and `discover_backend_tools`) to Cursor
+- **The Result**: Access hundreds of tools across multiple backend servers without hitting any limits!
+
+Here's how it works:
+- mcpware's manifest only declares a few top-level routing tools
+- These tools dynamically fetch and route requests to backend servers (like GitHub with 50+ tools)
+- The actual backend tools are never loaded into Cursor's context all at once
+- You stay well within MCP protocol constraints while accessing unlimited backend tools
+
+This means you can connect to dozens of backend servers, each with dozens of tools, all through a single mcpware connection! 🎯
+
 ## Quick Start
 
 ```bash
