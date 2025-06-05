@@ -50,13 +50,13 @@ class TestBackendMCPConfig:
         assert config.timeout == 30
         assert config.env == {}
     
-    def test_post_init_none_env(self):
-        """Test that None env is converted to empty dict"""
+    def test_default_empty_env(self):
+        """Test that env defaults to empty dict when not provided"""
         config = BackendMCPConfig(
             name="test_backend",
             command=["python"],
-            description="Test backend",
-            env=None
+            description="Test backend"
+            # env not provided - should default to {}
         )
         
         assert config.env == {}

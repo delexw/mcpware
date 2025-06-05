@@ -5,7 +5,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +27,12 @@ class BackendMCPConfig:
     command: Union[str, List[str]]
     description: str
     timeout: int = 30
-    env: Optional[Dict[str, str]] = None
+    env: Dict[str, str] = field(default_factory=dict)
     
     def __post_init__(self):
         # Ensure command is a list
         if isinstance(self.command, str):
             self.command = [self.command]
-        # Convert None env to empty dict
-        if self.env is None:
-            self.env = {}
 
 
 class ConfigurationManager:
