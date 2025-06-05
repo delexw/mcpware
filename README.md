@@ -18,7 +18,7 @@ A Model Context Protocol (MCP) gateway server that routes tool calls to multiple
 ## 🎯 Key Features
 
 ### 🚀 Bypass Tool Limits
-- **Problem**: Cursor has a 40-80 tool limit per MCP server
+- **Challenge**: MCP clients often have limits on how many tools can be loaded at once
 - **Solution**: mcpware exposes only 2 routing tools while providing access to unlimited backend tools
 - **Result**: Connect to GitHub (50+ tools), databases, and more through a single gateway!
 
