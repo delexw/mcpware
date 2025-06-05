@@ -1,1 +1,1 @@
-# Tests package for gateway-mcp-server 
+# Tests package for mcpware 

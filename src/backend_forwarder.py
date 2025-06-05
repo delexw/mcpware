@@ -1,5 +1,5 @@
 """
-BackendForwarder module for Gateway MCP Server
+BackendForwarder module for mcpware
 Manages forwarding requests to multiple stdio-based backend MCP servers
 """
 import json
@@ -94,6 +94,28 @@ class BackendForwarder:
             
         return response.get("result")
         
+    async def send_notification(self, backend_name: str, notification: Dict[str, Any]) -> None:
+        """Send a notification to the specified backend (no response expected)"""
+        if backend_name not in self.backends:
+            logger.warning(f"Cannot send notification to unknown backend: {backend_name}")
+            return
+            
+        backend = self.backends[backend_name]
+        
+        # Check if backend is running
+        if not backend.process or backend.process.returncode is not None:
+            logger.warning(f"Cannot send notification to backend {backend_name}: not running")
+            return
+            
+        try:
+            # Send notification without expecting response
+            notification_line = json.dumps(notification) + "\n"
+            backend.process.stdin.write(notification_line.encode())
+            await backend.process.stdin.drain()
+            logger.info(f"Sent notification to backend {backend_name}: {notification['method']}")
+        except Exception as e:
+            logger.error(f"Failed to send notification to backend {backend_name}: {e}")
+        
     async def check_backend_health(self, backend_name: str) -> Dict[str, Any]:
         """Check the health of a specific backend"""
         if backend_name not in self.backends:
@@ -112,7 +134,11 @@ class BackendForwarder:
                 "method": "initialize",
                 "params": {
                     "protocolVersion": "2024-11-05",
-                    "capabilities": {}
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "mcpware",
+                        "version": "1.0.0"
+                    }
                 }
             }
             

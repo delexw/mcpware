@@ -1,5 +1,6 @@
 """
-Gateway MCP Server Package
+mcpware Package
+Main package initialization
 """
 from .config import ConfigurationManager, BackendMCPConfig
 from .utils import substitute_env_vars

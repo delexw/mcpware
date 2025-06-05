@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Demonstration of security validation in Gateway MCP Server
+Demonstration of security validation in mcpware
 Shows how the system prevents cross-backend information leakage
 """
 import json

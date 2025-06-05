@@ -1,5 +1,5 @@
 """
-Backend module for Gateway MCP Server
+Backend module for mcpware
 Handles forwarding requests to stdio-based backend MCP servers
 
 This module maintains backward compatibility by re-exporting classes

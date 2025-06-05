@@ -1,5 +1,5 @@
 """
-Configuration module for Gateway MCP Server
+Configuration module for mcpware
 """
 import json
 import logging
@@ -36,7 +36,7 @@ class BackendMCPConfig:
 
 
 class ConfigurationManager:
-    """Manages configuration for the Gateway MCP Server"""
+    """Manages configuration for the mcpware"""
     
     def __init__(self, config_file: Union[str, Path]):
         self.config_file = Path(config_file)

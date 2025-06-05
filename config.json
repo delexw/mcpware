@@ -25,7 +25,8 @@
         "-i",
         "--rm",
         "mcp/time"
-      ]
+      ],
+      "timeout": 60
     },
     {
       "name": "dbhub-mysql-docker-marketplace-dev",
@@ -50,7 +51,7 @@
       "dbhub-mysql-docker-marketplace-dev": "sensitive"
     },
     "prevent_sensitive_to_public": true,
-    "prevent_sensitive_data_leak": false,
+    "prevent_sensitive_data_leak": true,
     "sql_injection_protection": true,
     "session_timeout_minutes": 30,
     "log_all_cross_backend_access": true,

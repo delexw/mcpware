@@ -1,5 +1,5 @@
 """
-StdioBackend module for Gateway MCP Server
+StdioBackend module for mcpware
 Manages communication with a single stdio-based MCP backend
 """
 import json
@@ -87,27 +87,50 @@ class StdioBackend:
         
         logger.info(f"Backend {self.name} process started with PID: {self.process.pid}")
         
+        # Give the process a moment to start up
+        await asyncio.sleep(0.5)
+        
+        # Check if the process is still running
+        if self.process.returncode is not None:
+            logger.error(f"Backend {self.name} exited immediately with code: {self.process.returncode}")
+            # Try to get any stderr output
+            if self.process.stderr:
+                try:
+                    stderr_output = await asyncio.wait_for(self.process.stderr.read(), timeout=1)
+                    if stderr_output:
+                        logger.error(f"Backend {self.name} stderr on exit: {stderr_output.decode()}")
+                except:
+                    pass
+            raise RuntimeError(f"Backend {self.name} failed to start (exit code: {self.process.returncode})")
+        else:
+            logger.info(f"Backend {self.name} is running")
+        
     async def _read_loop(self):
         """Read responses from the backend"""
+        logger.info(f"Starting read loop for backend {self.name}")
         try:
             while self.process and self.process.stdout:
+                logger.info(f"Gateway waiting for data from backend {self.name}...")
                 line = await self.process.stdout.readline()
                 if not line:
+                    logger.warning(f"Backend {self.name} stdout closed (no more data)")
                     break
+                    
+                logger.info(f"Gateway received data from backend {self.name}: {line}")
                     
                 try:
                     response = json.loads(line.decode().strip())
                     request_id = response.get("id")
                     
                     # Log all responses for debugging
-                    logger.info(f"Backend {self.name} sent response: {response}")
+                    logger.info(f"Gateway received response from backend {self.name}: {response}")
                     
                     if request_id in self.pending_requests:
                         future = self.pending_requests.pop(request_id)
                         future.set_result(response)
                     else:
                         # Log unexpected responses that don't match any pending request
-                        logger.warning(f"Backend {self.name} sent unexpected response with id={request_id}: {response}")
+                        logger.warning(f"Gateway received unexpected response from backend {self.name} with id={request_id}: {response}")
                 except json.JSONDecodeError:
                     logger.error(f"Invalid JSON from backend {self.name}: {line}")
                 except Exception as e:
@@ -115,6 +138,8 @@ class StdioBackend:
                     
         except Exception as e:
             logger.error(f"Read loop error for {self.name}: {e}")
+        finally:
+            logger.info(f"Read loop ended for backend {self.name}")
             
     async def _stderr_monitor(self):
         """Monitor stderr output for debugging"""
@@ -152,7 +177,7 @@ class StdioBackend:
         request_id = request["id"]
         method = request.get("method", "unknown")
         
-        logger.info(f"Backend {self.name} sending request {request_id}: {method}")
+        logger.info(f"Gateway sending request to backend {self.name} - id: {request_id}, method: {method}")
         
         # Create future for the response
         future = asyncio.Future()
@@ -166,9 +191,9 @@ class StdioBackend:
             
             # Wait for response with timeout
             timeout = self.config.timeout
-            logger.info(f"Backend {self.name} waiting for response to {request_id} (timeout: {timeout}s)")
+            logger.info(f"Gateway waiting for response from backend {self.name} - id: {request_id} (timeout: {timeout}s)")
             response = await asyncio.wait_for(future, timeout=timeout)
-            logger.info(f"Backend {self.name} received response for {request_id}")
+            logger.info(f"Gateway received response from backend {self.name} - id: {request_id}")
             return response
             
         except asyncio.TimeoutError:

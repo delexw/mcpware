@@ -1,5 +1,5 @@
 """
-JSONRPCHandler module for Gateway MCP Server
+JSONRPCHandler module for mcpware
 Handles JSON-RPC protocol wrapping for MCP messages
 """
 import logging
@@ -79,13 +79,17 @@ class JSONRPCHandler:
     
     async def _handle_notification(self, method: str, params: Dict[str, Any]) -> None:
         """Handle notifications (requests without id)"""
-        logger.debug(f"Received notification: {method}")
+        logger.info(f"Received notification: {method}")
         
         match method:
+            case "notifications/initialized":
+                # Forward initialized notification to all backends
+                logger.info("Forwarding initialized notification to all backends")
+                await self.protocol_handler.handle_initialized_notification()
             case "notifications/cancelled":
-                logger.debug(f"Received cancellation notification: {params}")
+                logger.info(f"Received cancellation notification: {params}")
             case _:
-                logger.debug(f"Unhandled notification: {method}")
+                logger.info(f"Unhandled notification: {method}")
     
     def _create_success_response(self, request_id: Any, result: Any) -> Dict[str, Any]:
         """Create a successful JSON-RPC response"""

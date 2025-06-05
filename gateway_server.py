@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Gateway MCP Server
+mcpware
 Routes tool calls to multiple stdio-based MCP backend servers
 """
 import argparse
@@ -86,10 +86,10 @@ async def process_request(
 
 async def main() -> None:
     """Main entry point for stdio mode"""
-    logger.info("Gateway MCP Server starting in stdio mode")
+    logger.info("mcpware starting in stdio mode")
     
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Gateway MCP Server")
+    parser = argparse.ArgumentParser(description="mcpware")
     parser.add_argument(
         "--config",
         type=Path,

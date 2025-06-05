@@ -1,5 +1,5 @@
 """
-MCPProtocolHandler module for Gateway MCP Server
+MCPProtocolHandler module for mcpware
 Handles MCP protocol operations and message routing
 """
 import logging
@@ -61,11 +61,32 @@ class MCPProtocolHandler:
                 "tools": {}  # We support tools
             },
             "serverInfo": {
-                "name": "gateway-mcp-server",
+                "name": "mcpware",
                 "version": "1.0.0",
                 "vendor": "MCP Gateway"
             }
         }
+    
+    async def handle_initialized_notification(self) -> None:
+        """Handle initialized notification by forwarding to all backends"""
+        logger.info("Forwarding initialized notification to all backends")
+        
+        # Send initialized notification to each backend
+        for backend_name in self.config_manager.backends.keys():
+            try:
+                # Send notification (no id, no response expected)
+                notification = {
+                    "jsonrpc": "2.0",
+                    "method": "notifications/initialized",
+                    "params": {}
+                }
+                
+                # Forward without expecting response
+                await self.backend_forwarder.send_notification(backend_name, notification)
+                logger.info(f"Sent initialized notification to backend {backend_name}")
+                
+            except Exception as e:
+                logger.error(f"Failed to send initialized notification to backend {backend_name}: {e}")
     
     async def handle_list_tools(self, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Handle tools/list request - return only the gateway's routing tool"""

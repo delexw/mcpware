@@ -1,5 +1,5 @@
 """
-MCP Protocol module for Gateway MCP Server
+MCP Protocol module for mcpware
 Handles MCP protocol messages and responses
 
 This module maintains backward compatibility by re-exporting classes

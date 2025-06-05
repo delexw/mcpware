@@ -1,5 +1,5 @@
 """
-Utility functions for Gateway MCP Server
+Utility functions for mcpware
 """
 import logging
 import os

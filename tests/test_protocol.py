@@ -80,7 +80,8 @@ class TestMCPProtocolHandler:
         
         assert result["protocolVersion"] == "2024-11-05"
         assert "tools" in result["capabilities"]
-        assert result["serverInfo"]["name"] == "gateway-mcp-server"
+        assert result["serverInfo"]["name"] == "mcpware"
+        assert result["serverInfo"]["version"] == "1.0.0"
         
         # Verify backend capabilities were cached
         assert "backend1" in protocol_handler._backend_capabilities

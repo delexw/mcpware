@@ -1,7 +1,7 @@
-# Gateway MCP Server
+# mcpware
 
 <div align="center">
-  <img src="mcpware-avatar-tech.svg" width="128" height="128" alt="Gateway MCP Server Logo">
+  <img src="mcpware-avatar-tech.svg" width="128" height="128" alt="mcpware Logo">
 </div>
 
 <div align="center">
@@ -13,7 +13,7 @@
 
 </div>
 
-A Model Context Protocol (MCP) gateway server that routes tool calls to multiple stdio-based MCP backend servers.
+Route MCP requests intelligently to multiple backend servers with comprehensive security validation.
 
 ## 🎯 Key Features
 

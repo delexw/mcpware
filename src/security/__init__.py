@@ -1,5 +1,5 @@
 """
-Security validation module for Gateway MCP Server
+Security validation module for mcpware
 """
 from .base import SecurityPolicy, PolicyResult, ValidationContext
 from .data_flow_policy import DataFlowPolicy
