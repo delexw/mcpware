@@ -247,7 +247,7 @@ Parameters:
 
 ## Using mcpware Alongside Other MCP Servers
 
-mcpware is designed to work alongside other MCP servers in your Claude Desktop configuration. You can:
+mcpware is designed to work alongside other MCP servers in your MCP client configuration. You can:
 
 1. **Use mcpware as a gateway** for multiple backend servers
 2. **Keep some MCP servers separate** for direct access
