@@ -1,7 +1,6 @@
 {
-  "backends": [
-    {
-      "name": "github",
+  "backends": {
+    "github": {
       "command": "docker",
       "args": [
         "run",
@@ -17,8 +16,7 @@
       "description": "GitHub MCP Server (Public Source)",
       "timeout": 30
     },
-    {
-      "name": "time",
+    "time": {
       "command": "docker",
       "args": [
         "run",
@@ -29,8 +27,7 @@
       "description": "Time MCP Server (Internal Service)",
       "timeout": 30
     },
-    {
-      "name": "local-mysql",
+    "local-mysql": {
       "command": "docker",
       "args": [
         "run",
@@ -45,8 +42,7 @@
       "description": "Local MySQL Database (Sensitive)",
       "timeout": 30
     },
-    {
-      "name": "web-scraper",
+    "web-scraper": {
       "command": "docker",
       "args": [
         "run",
@@ -57,7 +53,7 @@
       "description": "Web Scraper (Public Source)",
       "timeout": 30
     }
-  ],
+  },
   "security_policy": {
     "backend_security_levels": {
       "github": "public",

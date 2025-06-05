@@ -80,22 +80,20 @@ class TestConfigurationManager:
     def test_load_valid_config(self):
         """Test loading a valid configuration file"""
         config_data = {
-            "backends": [
-                {
-                    "name": "backend1",
+            "backends": {
+                "backend1": {
                     "command": "python",
                     "args": ["backend1.py"],
                     "description": "Backend 1",
                     "timeout": 20,
                     "env": {"VAR1": "value1"}
                 },
-                {
-                    "name": "backend2",
+                "backend2": {
                     "command": "python",
                     "args": ["backend2.py"],
                     "description": "Backend 2"
                 }
-            ],
+            },
             "security_policy": {
                 "backend_security_levels": {
                     "backend1": "public",
@@ -142,7 +140,7 @@ class TestConfigurationManager:
     def test_load_empty_backends(self):
         """Test loading configuration with empty backends list"""
         config_data = {
-            "backends": [],
+            "backends": {},
             "security_policy": {
                 "backend_security_levels": {}
             }
@@ -187,17 +185,18 @@ class TestConfigurationManager:
     
     def test_load_missing_required_fields(self):
         """Test loading configuration with missing required fields"""
-        # Missing 'name' field
+        # Missing 'command' field
         config_data = {
-            "backends": [
-                {
-                    "command": "python",
+            "backends": {
+                "backend1": {
                     "args": ["backend.py"],
                     "description": "Backend"
                 }
-            ],
+            },
             "security_policy": {
-                "backend_security_levels": {}
+                "backend_security_levels": {
+                    "backend1": "public"
+                }
             }
         }
         
@@ -211,7 +210,7 @@ class TestConfigurationManager:
             with pytest.raises(ConfigurationError) as exc_info:
                 config_manager.load()
                 
-            assert "name" in str(exc_info.value)
+            assert "command" in str(exc_info.value)
                 
         finally:
             os.unlink(temp_file)

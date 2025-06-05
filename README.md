@@ -194,17 +194,17 @@ Create a `config.json` with your backend servers:
 
 ```json
 {
-  "backends": [
-    {
-      "name": "github",
-      "command": ["docker", "run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
+  "backends": {
+    "github": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
       "description": "GitHub MCP Server",
       "timeout": 30
     }
-  ],
+  },
   "security_policy": {
     "backend_security_levels": {
       "github": "public"
@@ -215,7 +215,7 @@ Create a `config.json` with your backend servers:
 
 **Required**:
 - `security_policy` with `backend_security_levels` classifying each backend as `public`, `internal`, or `sensitive`
-- Backend commands must start with `["docker", "run", ...]` when using Docker
+- Backend commands must start with `docker` when using Docker
 
 See `config.example.json` for more backend examples (databases, APIs, etc.).
 
