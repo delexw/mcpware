@@ -1,4 +1,4 @@
-# mcpware
+# Gateway MCP Server
 
 <div align="center">
   <img src="mcpware-avatar-tech.svg" width="128" height="128" alt="mcpware Logo">
