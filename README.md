@@ -22,13 +22,6 @@ Route MCP requests intelligently to multiple backend servers with comprehensive 
 - **Solution**: mcpware exposes only 2 routing tools while providing access to unlimited backend tools
 - **Result**: Connect to GitHub (50+ tools), databases, and more through a single gateway!
 
-### 🔒 Built-in Security 🧪 *(Experimental)*
-- **Prevents cross-backend data leakage** (e.g., database → GitHub)
-- **Blocks SQL injection and sensitive data exposure**
-- **Taint tracking** stops all access after suspicious activity
-- **Mandatory security classification** for each backend (public/internal/sensitive)
-- **Opt In/Out Security Check from config.json**
-
 ### 🔧 Additional Benefits
 - **Single entry point** for multiple MCP servers
 - **Automatic process management** for backend servers
@@ -42,7 +35,7 @@ git clone https://github.com/delexw/mcpware.git
 cd mcpware
 
 # Build the Docker image
-docker build -t mcpware .
+docker build -t mcpware . --no-cache
 
 # Configure MCP client (see Installation section)
 ```
@@ -56,7 +49,7 @@ mcpware runs as a Docker container that:
 2. Routes them to the appropriate backend MCP server (also running in Docker)
 3. Returns responses back to MCP client
 
-**Important**: Backend servers must be Docker containers when running mcpware in Docker. NPM-based backends require running mcpware on the host.
+**Important**: Backend servers can use any command (`docker`, `npx`, `node`, `python`, etc.). When running mcpware in Docker, backends using local commands like `npx` or `node` will execute inside the mcpware container.
 
 ## Installation
 
@@ -188,26 +181,26 @@ Create a `config.json` with your backend servers:
 {
   "backends": {
     "github": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"],
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
       "description": "GitHub MCP Server",
-      "timeout": 30
-    }
-  },
-  "security_policy": {
-    "backend_security_levels": {
-      "github": "public"
+      "timeout": 60
+    },
+    "database": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "bytebase/dbhub", "--transport", "stdio"],
+      "description": "Database MCP Server"
     }
   }
 }
 ```
 
-**Required**:
-- `security_policy` with `backend_security_levels` classifying each backend as `public`, `internal`, or `sensitive`
-- Backend commands must start with `docker` when using Docker
+**Configuration Notes**:
+- Backend commands can be any executable (`docker`, `npx`, `node`, `python`, etc.)
+- When using `docker` commands, ensure Docker socket is mounted (see installation instructions)
 
 See `config.example.json` for more backend examples (databases, APIs, etc.).
 

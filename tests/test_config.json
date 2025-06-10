@@ -19,11 +19,5 @@
       "description": "Test backend 2 with string command",
       "timeout": 5
     }
-  },
-  "security_policy": {
-    "backend_security_levels": {
-      "test_backend_1": "public",
-      "test_backend_2": "internal"
-    }
   }
 }

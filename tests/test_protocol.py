@@ -33,15 +33,6 @@ class TestMCPProtocolHandler:
                 env={}
             )
         }
-        # Add required config attribute with security_policy
-        config_manager.config = {
-            "security_policy": {
-                "backend_security_levels": {
-                    "backend1": "public",
-                    "backend2": "internal"
-                }
-            }
-        }
         return config_manager
     
     @pytest.fixture

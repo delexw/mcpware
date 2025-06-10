@@ -9,7 +9,6 @@ import uuid
 
 from .config import ConfigurationManager, BackendMCPConfig
 from .backend_forwarder import BackendForwarder
-from .security import SecurityValidator
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +21,6 @@ class MCPProtocolHandler:
         self.backend_forwarder = backend_forwarder
         self._backend_capabilities = {}
         self._backend_tools = {}  # Cache tools by backend
-        
-        # Initialize security validator
-        security_config = config_manager.config.get("security_policy", {})
-        self.security_validator = SecurityValidator(security_config)
         
         # Track request sessions
         self._request_sessions: Dict[str, str] = {}  # request_id -> session_id
@@ -160,8 +155,6 @@ class MCPProtocolHandler:
             return await self._handle_use_tool(arguments, session_id)
         elif tool_name == "discover_backend_tools":
             return await self._handle_discover_tools(arguments)
-        elif tool_name == "security_status":
-            return await self._handle_security_status(session_id)
         else:
             return self._create_error_response(f"Unknown tool: {tool_name}")
     
@@ -194,15 +187,6 @@ class MCPProtocolHandler:
         if not server_tool:
             return self._create_error_response("Missing required parameter: server_tool")
         
-        # SECURITY VALIDATION: Check if backend access is allowed
-        is_allowed, error_msg = self.security_validator.validate_backend_access(
-            session_id, backend_server, server_tool, tool_arguments
-        )
-        
-        if not is_allowed:
-            logger.warning(f"Security validation failed for {backend_server}/{server_tool}: {error_msg}")
-            return self._create_error_response(f"Security validation failed: {error_msg}")
-        
         try:
             # Forward the tool call to the backend
             tool_request = {
@@ -220,15 +204,6 @@ class MCPProtocolHandler:
             )
             
             if "result" in response:
-                # SECURITY VALIDATION: Check response for sensitive data
-                is_allowed, error_msg = self.security_validator.validate_response(
-                    session_id, backend_server, response["result"]
-                )
-                
-                if not is_allowed:
-                    logger.warning(f"Response validation failed for {backend_server}: {error_msg}")
-                    return self._create_error_response(f"Response blocked: {error_msg}")
-                
                 # Wrap the result with backend info
                 result = response["result"]
                 if isinstance(result, dict) and "content" in result:
@@ -247,45 +222,6 @@ class MCPProtocolHandler:
         except Exception as e:
             logger.error(f"Error calling tool {server_tool} on {backend_server}: {e}")
             return self._create_error_response(f"Error: {str(e)}")
-    
-    async def _handle_security_status(self, session_id: str) -> Dict[str, Any]:
-        """Handle security_status tool call"""
-        summary = self.security_validator.get_session_summary(session_id)
-        
-        # Format the summary as readable text
-        text = "🔒 Security Status Report\n"
-        text += "=" * 40 + "\n\n"
-        
-        if "error" in summary:
-            text += f"Error: {summary['error']}\n"
-        else:
-            text += f"Session ID: {summary['session_id']}\n"
-            text += f"Started: {summary['started_at']}\n"
-            text += f"Duration: {summary['duration_seconds']:.1f} seconds\n"
-            text += f"Tainted: {'Yes' if summary['is_tainted'] else 'No'}\n"
-            
-            if summary['taint_source']:
-                text += f"Taint Source: {summary['taint_source']}\n"
-            
-            text += f"\nAccessed Backends: {', '.join(summary['accessed_backends'])}\n"
-            text += f"Total Accesses: {summary['total_accesses']}\n"
-            text += f"Sensitive Data Accesses: {summary['sensitive_data_accesses']}\n"
-            
-            if summary['backend_sequence']:
-                text += "\n📊 Recent Access History:\n"
-                for access in summary['backend_sequence']:
-                    text += f"  • {access['backend']} ({access['security_level']}) "
-                    text += f"- {access['tool']}"
-                    if access['has_sensitive_data']:
-                        text += " ⚠️ [sensitive data]"
-                    text += "\n"
-        
-        return {
-            "content": [{
-                "type": "text",
-                "text": text
-            }]
-        }
     
     async def _handle_discover_tools(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Handle the discover_backend_tools call"""

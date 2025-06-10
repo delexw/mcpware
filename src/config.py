@@ -57,12 +57,9 @@ class ConfigurationManager:
             # Store full configuration
             self.config = config_data
             
-            # Validate security policy
-            self._validate_security_policy(config_data)
-            
             # Extract and validate backends
             backends_data = config_data.get('backends', {})
-            backends = self._create_backends(backends_data, config_data)
+            backends = self._create_backends(backends_data)
             
             self.backends = backends
             logger.info(f"Loaded {len(backends)} backend configurations")
@@ -76,32 +73,8 @@ class ConfigurationManager:
             logger.error(f"Configuration error: {e}")
             raise ConfigurationError(str(e)) from e
     
-    def _validate_security_policy(self, config_data: Dict) -> None:
-        """Validate security policy configuration"""
-        if 'security_policy' not in config_data:
-            raise SecurityPolicyError("Missing required 'security_policy' in configuration")
-        
-        security_policy = config_data['security_policy']
-        
-        if not isinstance(security_policy, dict):
-            raise SecurityPolicyError("'security_policy' must be a dictionary")
-        
-        if 'backend_security_levels' not in security_policy:
-            raise SecurityPolicyError("Missing required 'backend_security_levels' in security_policy")
-    
-    def _create_backends(self, backends_data: Dict[str, Dict], config_data: Dict) -> Dict[str, BackendMCPConfig]:
-        """Create backend configurations and validate security levels"""
-        # Get backend names and security levels using set comprehensions
-        backend_names = set(backends_data.keys())
-        classified_backends = set(config_data['security_policy']['backend_security_levels'].keys())
-        
-        # Check for unclassified backends
-        if unclassified := backend_names - classified_backends:
-            raise SecurityPolicyError(
-                f"The following backends are not classified in security policy: {', '.join(sorted(unclassified))}. "
-                f"Please add them to 'backend_security_levels' with value: public, internal, or sensitive"
-            )
-        
+    def _create_backends(self, backends_data: Dict[str, Dict]) -> Dict[str, BackendMCPConfig]:
+        """Create backend configurations"""
         # Create backend configurations using dictionary comprehension
         return {
             name: BackendMCPConfig(

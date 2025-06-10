@@ -1,29 +1,15 @@
 {
   "backends": {
     "github": {
-      "command": "docker",
+      "command": "npx",
       "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
+        "-y",
+        "@modelcontextprotocol/server-github"
       ],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
       },
       "description": "GitHub MCP Server",
-      "timeout": 60
-    },
-    "time": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "mcp/time"
-      ],
       "timeout": 60
     },
     "dbhub-mysql-docker-marketplace-dev": {
@@ -39,19 +25,21 @@
         "mysql://root@host.docker.internal:3306/marketplace?sslmode=disable"
       ],
       "description": "DbHub MySQL Docker for Marketplace Dev"
-    }
-  },
-  "security_policy": {
-    "backend_security_levels": {
-      "github": "public",
-      "time": "internal",
-      "dbhub-mysql-docker-marketplace-dev": "sensitive"
     },
-    "prevent_sensitive_to_public": true,
-    "prevent_sensitive_data_leak": true,
-    "sql_injection_protection": true,
-    "session_timeout_minutes": 30,
-    "log_all_cross_backend_access": true,
-    "block_after_suspicious_activity": true
+    "buildkite": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "BUILDKITE_API_TOKEN",
+        "ghcr.io/buildkite/buildkite-mcp-server",
+        "stdio"
+      ],
+      "env": {
+        "BUILDKITE_API_TOKEN": "${BUILDKITE_API_TOKEN}"
+      }
+    }
   }
 }

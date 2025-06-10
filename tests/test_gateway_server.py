@@ -38,15 +38,6 @@ class TestGatewayServerIntegration:
         mock_config_manager.return_value.load.return_value = mock_config.backends
         mock_config_manager.return_value.backends = mock_config.backends
         
-        # Mock security policy configuration
-        mock_config_manager.return_value.config = {
-            "security_policy": {
-                "backend_security_levels": {
-                    "test_backend": "public"
-                }
-            }
-        }
-        
         # Mock backend forwarder
         mock_forwarder_instance = AsyncMock()
         mock_forwarder_instance.initialize = AsyncMock()
@@ -183,15 +174,6 @@ class TestEndToEnd:
                 command=["echo", "test"],
                 description="Test backend"
             )
-        }
-        
-        # Set security config
-        config_manager.config = {
-            "security_policy": {
-                "backend_security_levels": {
-                    "test_backend": "public"
-                }
-            }
         }
         
         # Create a mock backend forwarder

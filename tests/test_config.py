@@ -93,12 +93,6 @@ class TestConfigurationManager:
                     "args": ["backend2.py"],
                     "description": "Backend 2"
                 }
-            },
-            "security_policy": {
-                "backend_security_levels": {
-                    "backend1": "public",
-                    "backend2": "internal"
-                }
             }
         }
         
@@ -140,10 +134,7 @@ class TestConfigurationManager:
     def test_load_empty_backends(self):
         """Test loading configuration with empty backends list"""
         config_data = {
-            "backends": {},
-            "security_policy": {
-                "backend_security_levels": {}
-            }
+            "backends": {}
         }
         
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
@@ -191,11 +182,6 @@ class TestConfigurationManager:
                 "backend1": {
                     "args": ["backend.py"],
                     "description": "Backend"
-                }
-            },
-            "security_policy": {
-                "backend_security_levels": {
-                    "backend1": "public"
                 }
             }
         }
