@@ -70,13 +70,14 @@ class StdioBackend:
         if env_diff:
             logger.info(f"  Modified environment variables: {list(env_diff.keys())}")
         
-        # Start the process
+        # Start the process with increased buffer limits for large responses
         self.process = await asyncio.create_subprocess_exec(
             *command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            env=env
+            env=env,
+            limit=10 * 1024 * 1024  # 10MB limit for large tool responses
         )
         
         # Start reading from the backend
