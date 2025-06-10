@@ -99,7 +99,8 @@ class TestStdioBackend:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env=unittest.mock.ANY
+            env=unittest.mock.ANY,
+            limit=10485760  # 10MB limit we added to fix buffer overflow
         )
         
         assert backend.process == mock_process
