@@ -13,7 +13,7 @@
 
 </div>
 
-Route MCP requests intelligently to multiple backend servers with comprehensive security validation.
+Route MCP requests intelligently to multiple backend servers.
 
 ## 🎯 Key Features
 
