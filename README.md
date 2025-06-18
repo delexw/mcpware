@@ -68,12 +68,18 @@ mcpware runs as a Docker container that:
 2. Configure your backends in `config.json` (see Configuration section below)
 
 3. Set up your environment variables:
-   ```bash
-   # Create a .env file with your tokens, eg. Github
-   echo "GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here" > .env
-   ```
+   
+   1. Copy the example file: `cp env.example .env`
+   2. Edit `.env` with your actual values:
+      ```bash
+      GITHUB_PERSONAL_ACCESS_TOKEN=your_github_token_here
+      BUILDKITE_API_TOKEN=your_buildkite_token_here
+      # Add other environment variables as needed
+      ```
 
 4. Add to MCP client configuration:
+
+   **Note:** You can configure the secrets or tokens directly into mcpware `config.json`
 
    **Configuration (Direct Docker Run):**
    ```json
@@ -89,13 +95,10 @@ mcpware runs as a Docker container that:
            "/path/to/mcpware/config.json:/app/config.json:ro",
            "-v",
            "/var/run/docker.sock:/var/run/docker.sock",
-           "-e",
-           "GITHUB_PERSONAL_ACCESS_TOKEN",
+           "--env-file",
+           "/path/to/mcpware/.env",
            "mcpware"
-         ],
-         "env": {
-           "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
-         }
+         ]
        }
      }
    }
@@ -103,8 +106,7 @@ mcpware runs as a Docker container that:
 
    **Important**: 
    - Replace `/path/to/mcpware` with the absolute path to your cloned repository
-   - If you configure Github MCP server in config.json, Replace `your_github_token_here` with your actual GitHub Personal Access Token 
-   - The Docker socket mount (`/var/run/docker.sock`) is required for mcpware to launch Docker-based backends
+   - The Docker socket mount (`/var/run/docker.sock`) is required for mcpware to launch Docker-based backends, otherwise you don't need to
    
    **Why mount the Docker socket?**
    - mcpware needs to launch Docker containers for backend MCP servers (like `ghcr.io/github/github-mcp-server`)
@@ -151,13 +153,10 @@ Update the Docker socket path:
         "/path/to/mcpware/config.json:/app/config.json:ro",
         "-v",
         "//./pipe/docker_engine://./pipe/docker_engine",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "--env-file",
+        "/path/to/mcpware/.env",
         "mcpware"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
-      }
+      ]
     }
   }
 }
@@ -247,6 +246,7 @@ mcpware is designed to work alongside other MCP servers in your MCP client confi
 3. **Mix and match** based on your needs
 
 Example mixed configuration:
+
 ```json
 {
   "mcpServers": {
@@ -256,12 +256,9 @@ Example mixed configuration:
         "run", "-i", "--rm",
         "-v", "/path/to/mcpware/config.json:/app/config.json:ro",
         "-v", "/var/run/docker.sock:/var/run/docker.sock",
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "--env-file", "/path/to/mcpware/.env",
         "mcpware"
-      ],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token"
-      }
+      ]
     },
     "redis-direct": {
       "command": "docker",

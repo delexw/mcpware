@@ -24,6 +24,10 @@ services:
       # Linux/macOS/WSL2: /var/run/docker.sock:/var/run/docker.sock
       # Windows (native): //./pipe/docker_engine://./pipe/docker_engine
       - /var/run/docker.sock:/var/run/docker.sock
+    # Optional: Load environment variables from .env file if it exists
+    # Create a .env file in the project root and uncomment the line below
+    # env_file:
+    #   - .env
     environment:
       - GITHUB_PERSONAL_ACCESS_TOKEN
     stdin_open: true

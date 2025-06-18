@@ -129,18 +129,7 @@ class MCPProtocolHandler:
             }
         }
         
-        # Add security status tool
-        security_status = {
-            "name": "security_status",
-            "description": "Get current session security status and access history",
-            "inputSchema": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False
-            }
-        }
-        
-        return {"tools": [use_tool, discover_tools, security_status]}
+        return {"tools": [use_tool, discover_tools]}
     
     async def handle_tool_call(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle tools/call request"""

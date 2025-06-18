@@ -40,6 +40,36 @@
       "env": {
         "BUILDKITE_API_TOKEN": "${BUILDKITE_API_TOKEN}"
       }
+    },
+    "redis-banners": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "--name",
+        "redis-mcp-server",
+        "-i",
+        "-e",
+        "REDIS_HOST=host.docker.internal",
+        "-e",
+        "REDIS_PORT=6379",
+        "-e",
+        "REDIS_DB=4",
+        "-e",
+        "REDIS_CERT_REQS=false",
+        "mcp/redis"
+      ]
+    },
+    "opensearch-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "opensearch-mcp-server"
+      ],
+      "env": {
+        "OPENSEARCH_HOSTS": "http://localhost:9200",
+        "OPENSEARCH_USERNAME": "admin",
+        "OPENSEARCH_PASSWORD": "admin"
+      }
     }
   }
 }

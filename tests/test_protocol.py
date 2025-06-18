@@ -109,7 +109,7 @@ class TestMCPProtocolHandler:
         
         assert "tools" in result
         tools = result["tools"]
-        assert len(tools) == 3  # use_tool, discover_backend_tools, security_status
+        assert len(tools) == 2  # use_tool, discover_backend_tools
         
         # Check use_tool
         use_tool = next(t for t in tools if t["name"] == "use_tool")
@@ -120,10 +120,6 @@ class TestMCPProtocolHandler:
         # Check discover_backend_tools
         discover_tool = next(t for t in tools if t["name"] == "discover_backend_tools")
         assert "backend_server" in discover_tool["inputSchema"]["properties"]
-        
-        # Check security_status
-        security_tool = next(t for t in tools if t["name"] == "security_status")
-        assert security_tool["description"] == "Get current session security status and access history"
     
     @pytest.mark.asyncio
     async def test_handle_tool_call_use_tool(self, protocol_handler, mock_backend_forwarder):
