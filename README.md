@@ -430,30 +430,6 @@ The project includes comprehensive unit and integration tests.
    ```bash
    pytest-watch
    ```
-
-## Security Details
-
-mcpware prevents cross-backend information leakage through multiple layers:
-
-### Attack Prevention Example
-1. **Attacker** creates malicious GitHub issue with prompt injection
-2. **User** asks: "Review my GitHub issues"  
-3. **Agent** reads malicious issue and tries to query database
-4. **mcpware blocks**: Cannot send database data back to GitHub (public backend)
-
-### Security Tools
-- Use `security_status` tool to monitor session security
-- Configure policies in `config.json` (see `config.example.json` for full options)
-- Automatic taint tracking after suspicious activity
-
-## Architecture
-
-mcpware uses a "Docker-out-of-Docker" approach:
-- Runs as a container with access to host Docker daemon
-- Launches backend containers as siblings (not children)
-- Backends can access host services via `host.docker.internal`
-- Communication via stdio pipes between containers
-
 ## License
 
 MIT
