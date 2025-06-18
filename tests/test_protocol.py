@@ -207,9 +207,18 @@ class TestMCPProtocolHandler:
         
         result = await protocol_handler.handle_tool_call(params)
         
-        assert "Backend: backend1" in result["content"][0]["text"]
-        assert "tool1: Tool 1" in result["content"][0]["text"]
-        assert "tool2: Tool 2" in result["content"][0]["text"]
+        # Parse the JSON response to verify structure
+        import json
+        response_data = json.loads(result["content"][0]["text"])
+        assert "tools" in response_data
+        tools = response_data["tools"]
+        assert len(tools) == 2
+        
+        # Verify tool structure and backend prefixes
+        tool1 = next(t for t in tools if t["name"] == "tool1")
+        tool2 = next(t for t in tools if t["name"] == "tool2")
+        assert tool1["description"] == "[backend1] Tool 1"
+        assert tool2["description"] == "[backend1] Tool 2"
     
     @pytest.mark.asyncio
     async def test_handle_discover_tools_all(self, protocol_handler, mock_backend_forwarder):
@@ -243,9 +252,18 @@ class TestMCPProtocolHandler:
         
         result = await protocol_handler.handle_tool_call(params)
         
-        text = result["content"][0]["text"]
-        assert "Backend: backend1" in text
-        assert "Backend: backend2" in text
+        # Parse the JSON response to verify structure
+        import json
+        response_data = json.loads(result["content"][0]["text"])
+        assert "tools" in response_data
+        tools = response_data["tools"]
+        assert len(tools) == 2
+        
+        # Verify tools from both backends are present with proper prefixes
+        tool1 = next(t for t in tools if t["name"] == "tool1")
+        tool2 = next(t for t in tools if t["name"] == "tool2")
+        assert tool1["description"] == "[backend1] Tool 1"
+        assert tool2["description"] == "[backend2] Tool 2"
     
     @pytest.mark.asyncio
     async def test_handle_list_resources(self, protocol_handler, mock_backend_forwarder):

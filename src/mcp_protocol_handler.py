@@ -6,6 +6,7 @@ import logging
 from typing import Dict, List, Any, Optional
 import asyncio
 import uuid
+import json
 
 from .config import ConfigurationManager, BackendMCPConfig
 from .backend_forwarder import BackendForwarder
@@ -226,10 +227,10 @@ class MCPProtocolHandler:
         # Otherwise, discover all backends
         return await self._discover_all_backend_tools()
     
-    async def _discover_single_backend_tools(self, backend_name: str) -> Dict[str, Any]:
-        """Discover tools for a single backend"""
+    async def _get_backend_tools(self, backend_name: str) -> List[Dict[str, Any]]:
+        """Get tools from a specific backend, returns empty list on error"""
         try:
-            # Simply try to get tools from the backend
+            # Request tools from backend
             list_request = {
                 "jsonrpc": "2.0",
                 "method": "tools/list",
@@ -246,82 +247,59 @@ class MCPProtocolHandler:
                 # Cache tools
                 self._backend_tools[backend_name] = tools
                 
-                # Format response
-                backend_info = self.config_manager.backends[backend_name]
-                tool_list = []
+                # Create prefixed tools
+                prefixed_tools = []
                 for tool in tools:
-                    tool_list.append(f"  - {tool['name']}: {tool.get('description', 'No description')}")
+                    prefixed_tool = {
+                        "name": f"{tool['name']}",
+                        "description": f"[{backend_name}] {tool.get('description', 'No description')}",
+                        "inputSchema": tool.get("inputSchema", {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": True
+                        })
+                    }
+                    prefixed_tools.append(prefixed_tool)
                 
-                text = f"Backend: {backend_name}\n"
-                text += f"Description: {backend_info.description}\n"
-                text += f"Available tools ({len(tools)}):\n"
-                text += "\n".join(tool_list)
-                
-                return {
-                    "content": [{
-                        "type": "text",
-                        "text": text
-                    }]
-                }
+                return prefixed_tools
             else:
-                return self._create_error_response(f"Failed to list tools from {backend_name}")
+                return []
                 
         except Exception as e:
             logger.error(f"Error discovering tools from {backend_name}: {e}")
-            return self._create_error_response(f"Error: {str(e)}")
+            return []
     
-    async def _discover_all_backend_tools(self) -> Dict[str, Any]:
-        """Discover tools for all backends"""
-        discoveries = []
+    async def _discover_single_backend_tools(self, backend_name: str) -> Dict[str, Any]:
+        """Discover tools for a single backend"""
+        if backend_name not in self.config_manager.backends:
+            return self._create_error_response(f"Unknown backend server: {backend_name}")
         
-        for backend_name in self.config_manager.backends.keys():
-            try:
-                # Request tools from backend
-                list_request = {
-                    "jsonrpc": "2.0",
-                    "method": "tools/list",
-                    "id": f"list-tools-{backend_name}"
-                }
-                
-                response = await self.backend_forwarder.forward_request(
-                    backend_name, list_request
-                )
-                
-                if "result" in response and "tools" in response["result"]:
-                    tools = response["result"]["tools"]
-                    
-                    # Cache tools
-                    self._backend_tools[backend_name] = tools
-                    
-                    # Add to discoveries
-                    backend_info = self.config_manager.backends[backend_name]
-                    tool_list = []
-                    for tool in tools[:5]:  # Show first 5 tools
-                        tool_list.append(f"  - {tool['name']}: {tool.get('description', 'No description')}")
-                    
-                    discovery = f"\n📦 Backend: {backend_name}\n"
-                    discovery += f"   Description: {backend_info.description}\n"
-                    discovery += f"   Tools ({len(tools)} available):\n"
-                    discovery += "\n".join(tool_list)
-                    
-                    if len(tools) > 5:
-                        discovery += f"\n   ... and {len(tools) - 5} more tools"
-                    
-                    discoveries.append(discovery)
-                    
-            except Exception as e:
-                logger.error(f"Error discovering tools from {backend_name}: {e}")
-                discoveries.append(f"\n❌ Backend: {backend_name} - Error: {str(e)}")
+        tools = await self._get_backend_tools(backend_name)
         
-        if not discoveries:
-            text = "No backend servers with tools found."
-        else:
-            text = "Available Backend Servers and Tools:\n" + "\n".join(discoveries)
+        if not tools:
+            return self._create_error_response(f"Failed to list tools from {backend_name}")
         
+        # Return as tool call response with JSON content
         return {
             "content": [{
                 "type": "text",
-                "text": text
+                "text": json.dumps({"tools": tools}, indent=2)
+            }]
+        }
+    
+    async def _discover_all_backend_tools(self) -> Dict[str, Any]:
+        """Discover tools for all backends"""
+        all_tools = []
+        
+        for backend_name in self.config_manager.backends.keys():
+            tools = await self._get_backend_tools(backend_name)
+            all_tools.extend(tools)
+        
+        # Return as tool call response with JSON content
+        return {
+            "content": [{
+                "type": "text",
+                "text": json.dumps({"tools": all_tools}, indent=2)
             }]
         }
     

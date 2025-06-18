@@ -46,8 +46,6 @@
       "args": [
         "run",
         "--rm",
-        "--name",
-        "redis-mcp-server",
         "-i",
         "-e",
         "REDIS_HOST=host.docker.internal",
