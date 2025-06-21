@@ -144,7 +144,7 @@ class TestMCPProtocolHandler:
         result = await protocol_handler.handle_tool_call(params)
         
         assert "content" in result
-        assert result["content"][0]["text"] == "[backend1] Tool executed"
+        assert result["content"][0]["text"] == "Tool executed"
     
     @pytest.mark.asyncio
     async def test_handle_tool_call_missing_backend(self, protocol_handler):
@@ -214,37 +214,15 @@ class TestMCPProtocolHandler:
         tools = response_data["tools"]
         assert len(tools) == 2
         
-        # Verify tool structure and backend prefixes
+        # Verify tool structure (no backend prefixes in descriptions)
         tool1 = next(t for t in tools if t["name"] == "tool1")
         tool2 = next(t for t in tools if t["name"] == "tool2")
-        assert tool1["description"] == "[backend1] Tool 1"
-        assert tool2["description"] == "[backend1] Tool 2"
+        assert tool1["description"] == "Tool 1"
+        assert tool2["description"] == "Tool 2"
     
     @pytest.mark.asyncio
-    async def test_handle_discover_tools_all(self, protocol_handler, mock_backend_forwarder):
-        """Test discovering tools for all backends"""
-        # Set up backend capabilities
-        protocol_handler._backend_capabilities = {
-            "backend1": {"tools": {}},
-            "backend2": {"tools": {}}
-        }
-        
-        # Mock backend responses
-        mock_backend_forwarder.forward_request.side_effect = [
-            {
-                "jsonrpc": "2.0",
-                "result": {
-                    "tools": [{"name": "tool1", "description": "Tool 1"}]
-                }
-            },
-            {
-                "jsonrpc": "2.0",
-                "result": {
-                    "tools": [{"name": "tool2", "description": "Tool 2"}]
-                }
-            }
-        ]
-        
+    async def test_handle_discover_tools_missing_backend(self, protocol_handler):
+        """Test discovering tools with missing backend_server parameter"""
         params = {
             "name": "discover_backend_tools",
             "arguments": {}
@@ -252,18 +230,8 @@ class TestMCPProtocolHandler:
         
         result = await protocol_handler.handle_tool_call(params)
         
-        # Parse the JSON response to verify structure
-        import json
-        response_data = json.loads(result["content"][0]["text"])
-        assert "tools" in response_data
-        tools = response_data["tools"]
-        assert len(tools) == 2
-        
-        # Verify tools from both backends are present with proper prefixes
-        tool1 = next(t for t in tools if t["name"] == "tool1")
-        tool2 = next(t for t in tools if t["name"] == "tool2")
-        assert tool1["description"] == "[backend1] Tool 1"
-        assert tool2["description"] == "[backend2] Tool 2"
+        assert result["isError"] is True
+        assert "Missing required parameter: backend_server" in result["content"][0]["text"]
     
     @pytest.mark.asyncio
     async def test_handle_list_resources(self, protocol_handler, mock_backend_forwarder):

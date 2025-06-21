@@ -235,7 +235,7 @@ class TestEndToEnd:
         
         assert tool_response["id"] == 2
         assert "result" in tool_response
-        assert tool_response["result"]["content"][0]["text"] == "[test_backend] Tool executed successfully"
+        assert tool_response["result"]["content"][0]["text"] == "Tool executed successfully"
         
         # Clean up
         await backend_forwarder.close()

@@ -122,10 +122,22 @@ class MCPProtocolHandler:
                 "properties": {
                     "backend_server": {
                         "type": "string",
-                        "description": "The backend server to query for available tools (optional, omit to list all)",
+                        "description": "The backend server to query for available tools",
                         "enum": list(self.config_manager.backends.keys())
                     }
                 },
+                "required": ["backend_server"],
+                "additionalProperties": False
+            },
+            "outputSchema": {
+                "type": "object",
+                "properties": {
+                    "tools": {
+                        "type": "array",
+                        "description": "List of available tools from backend servers"
+                    }
+                },
+                "required": ["tools"],
                 "additionalProperties": False
             }
         }
@@ -194,14 +206,8 @@ class MCPProtocolHandler:
             )
             
             if "result" in response:
-                # Wrap the result with backend info
-                result = response["result"]
-                if isinstance(result, dict) and "content" in result:
-                    # Add backend info to the response
-                    for content_item in result.get("content", []):
-                        if isinstance(content_item, dict) and content_item.get("type") == "text":
-                            content_item["text"] = f"[{backend_server}] {content_item.get('text', '')}"
-                return result
+                # Pass through the backend response as-is
+                return response["result"]
             elif "error" in response:
                 return self._create_error_response(
                     f"Backend error from {backend_server}: {response['error'].get('message', 'Unknown error')}"
@@ -217,15 +223,17 @@ class MCPProtocolHandler:
         """Handle the discover_backend_tools call"""
         backend_server = arguments.get("backend_server")
         
-        # If specific backend requested
-        if backend_server:
-            if backend_server not in self.config_manager.backends:
-                return self._create_error_response(f"Unknown backend server: {backend_server}")
-            
-            return await self._discover_single_backend_tools(backend_server)
+        # backend_server is now required
+        if not backend_server:
+            return self._create_error_response("Missing required parameter: backend_server")
         
-        # Otherwise, discover all backends
-        return await self._discover_all_backend_tools()
+        if backend_server not in self.config_manager.backends:
+            available = ", ".join(self.config_manager.backends.keys())
+            return self._create_error_response(
+                f"Unknown backend server: {backend_server}. Available servers: {available}"
+            )
+        
+        return await self._discover_single_backend_tools(backend_server)
     
     async def _get_backend_tools(self, backend_name: str) -> List[Dict[str, Any]]:
         """Get tools from a specific backend, returns empty list on error"""
@@ -247,21 +255,21 @@ class MCPProtocolHandler:
                 # Cache tools
                 self._backend_tools[backend_name] = tools
                 
-                # Create prefixed tools
-                prefixed_tools = []
+                # Return tools as-is without backend prefixing
+                clean_tools = []
                 for tool in tools:
-                    prefixed_tool = {
-                        "name": f"{tool['name']}",
-                        "description": f"[{backend_name}] {tool.get('description', 'No description')}",
+                    clean_tool = {
+                        "name": tool['name'],
+                        "description": tool.get('description', 'No description'),
                         "inputSchema": tool.get("inputSchema", {
                             "type": "object",
                             "properties": {},
                             "additionalProperties": True
                         })
                     }
-                    prefixed_tools.append(prefixed_tool)
+                    clean_tools.append(clean_tool)
                 
-                return prefixed_tools
+                return clean_tools
             else:
                 return []
                 
@@ -279,29 +287,18 @@ class MCPProtocolHandler:
         if not tools:
             return self._create_error_response(f"Failed to list tools from {backend_name}")
         
-        # Return as tool call response with JSON content
+        # Return with both structured data and text content
         return {
             "content": [{
                 "type": "text",
-                "text": json.dumps({"tools": tools}, indent=2)
-            }]
+                "text": json.dumps({"tools": tools})
+            }],
+            "structuredContent": {
+                "tools": tools
+            }
         }
     
-    async def _discover_all_backend_tools(self) -> Dict[str, Any]:
-        """Discover tools for all backends"""
-        all_tools = []
-        
-        for backend_name in self.config_manager.backends.keys():
-            tools = await self._get_backend_tools(backend_name)
-            all_tools.extend(tools)
-        
-        # Return as tool call response with JSON content
-        return {
-            "content": [{
-                "type": "text",
-                "text": json.dumps({"tools": all_tools}, indent=2)
-            }]
-        }
+
     
     async def handle_list_resources(self) -> Dict[str, List[Dict[str, Any]]]:
         """Handle resources/list request - aggregate resources from all backends"""
