@@ -2,6 +2,7 @@
 BackendForwarder module for mcpware
 Manages forwarding requests to multiple stdio-based backend MCP servers
 """
+import asyncio
 import json
 import logging
 from dataclasses import dataclass
@@ -167,12 +168,27 @@ class BackendForwarder:
             ).to_dict()
             
     async def close(self) -> None:
-        """Stop all backend processes"""
-        for backend in self.backends.values():
+        """Stop all backend processes according to MCP stdio shutdown specification"""
+        logger.info(f"Shutting down {len(self.backends)} backend MCP servers...")
+        
+        # Stop all backends concurrently with individual timeouts
+        async def stop_backend_with_timeout(backend: StdioBackend):
             try:
-                await backend.stop()
+                logger.info(f"Stopping backend: {backend.name}")
+                await asyncio.wait_for(backend.stop(), timeout=15.0)
+                logger.info(f"Successfully stopped backend: {backend.name}")
+            except asyncio.TimeoutError:
+                logger.error(f"Timeout stopping backend {backend.name} after 15 seconds")
             except Exception as e:
                 logger.error(f"Error stopping backend {backend.name}: {e}")
+        
+        tasks = [stop_backend_with_timeout(backend) for backend in self.backends.values()]
+        
+        # Wait for all backends to stop (or timeout)
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+                
+        logger.info("All backend shutdown procedures completed")
                 
     def _parse_backend_response(self, result: Any) -> str:
         """Parse response from backend MCP server"""

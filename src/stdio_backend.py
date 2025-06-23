@@ -208,25 +208,56 @@ class StdioBackend:
             raise
             
     async def stop(self):
-        """Stop the backend process"""
+        """Stop the backend process following MCP stdio shutdown specification"""
+        logger.info(f"Stopping backend {self.name}...")
+        
+        # Cancel read tasks first
         if self.read_task:
             self.read_task.cancel()
+            try:
+                await self.read_task
+            except asyncio.CancelledError:
+                pass
             
         if self.stderr_task:
             self.stderr_task.cancel()
+            try:
+                await self.stderr_task
+            except asyncio.CancelledError:
+                pass
             
+        # Follow MCP specification: close stdin first, then terminate if needed
         if self.process:
             try:
+                # Step 1: Close stdin to the backend process (MCP spec recommendation)
+                if self.process.stdin and not self.process.stdin.is_closing():
+                    self.process.stdin.close()
+                    await self.process.stdin.wait_closed()
+                    logger.info(f"Closed stdin to backend {self.name}")
+                
+                # Step 2: Wait for process to exit gracefully
+                try:
+                    await asyncio.wait_for(self.process.wait(), timeout=3)
+                    logger.info(f"Backend {self.name} exited gracefully")
+                    return
+                except asyncio.TimeoutError:
+                    logger.warning(f"Backend {self.name} did not exit after stdin close, sending SIGTERM")
+                
+                # Step 3: Send SIGTERM (terminate)
                 self.process.terminate()
-                await asyncio.wait_for(self.process.wait(), timeout=5)
+                try:
+                    await asyncio.wait_for(self.process.wait(), timeout=5)
+                    logger.info(f"Backend {self.name} terminated")
+                    return
+                except asyncio.TimeoutError:
+                    logger.warning(f"Backend {self.name} did not respond to SIGTERM, sending SIGKILL")
+                
+                # Step 4: Force kill if terminate didn't work
+                self.process.kill()
+                await self.process.wait()
+                logger.info(f"Backend {self.name} force killed")
+                
             except ProcessLookupError:
                 # Process already terminated
-                pass
-            except asyncio.TimeoutError:
-                # Force kill if terminate didn't work
-                try:
-                    self.process.kill()
-                    await self.process.wait()
-                except ProcessLookupError:
-                    # Process already terminated
-                    pass 
+                logger.info(f"Backend {self.name} was already terminated")
+                pass 

@@ -35,5 +35,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY gateway_server.py .
 COPY src/ ./src/
 
-# The gateway runs in stdio mode
-ENTRYPOINT ["python", "gateway_server.py"] 
+# The gateway runs in stdio mode with proper signal handling
+ENTRYPOINT ["python", "-u", "gateway_server.py"] 

@@ -266,17 +266,36 @@ class TestStdioBackend:
     @pytest.mark.asyncio
     async def test_stop(self, backend):
         """Test stopping the backend process"""
-        # Mock process
+        # Mock process with stdin
         backend.process = AsyncMock()
+        backend.process.stdin = AsyncMock()
+        backend.process.stdin.is_closing = Mock(return_value=False)
+        backend.process.stdin.close = Mock()
+        backend.process.stdin.wait_closed = AsyncMock()
+        
+        # Mock wait() to timeout twice (stdin close and terminate), then succeed on kill
+        wait_call_count = 0
+        async def mock_wait():
+            nonlocal wait_call_count
+            wait_call_count += 1
+            if wait_call_count <= 2:  # First two calls timeout
+                raise asyncio.TimeoutError()
+            return 0  # Third call (after kill) succeeds
+        
+        backend.process.wait = mock_wait
         backend.process.terminate = Mock()
         backend.process.kill = Mock()
-        backend.process.wait = AsyncMock()
         backend.read_task = asyncio.create_task(asyncio.sleep(10))
         backend.stderr_task = asyncio.create_task(asyncio.sleep(10))
         
         await backend.stop()
         
+        # Verify stdin was closed first (MCP spec)
+        assert backend.process.stdin.close.called
+        # Verify terminate was called after stdin close timeout
         assert backend.process.terminate.called
+        # Verify kill was called after terminate timeout
+        assert backend.process.kill.called
         # Give a bit of time for task cancellation to propagate
         await asyncio.sleep(0.1)
         # Tasks should be cancelled after stop
